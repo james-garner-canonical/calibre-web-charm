@@ -69,7 +69,30 @@ config:
 containers:
   calibre-web:
     resource: calibre-web-image
+    mounts:
+      - storage: books
+        location: /books
 
+storage:
+  books:
+    type: filesystem
+    description: Storage mount for Calibre Library
+    location: /books
+    minimum-size: 1G
+    properties:
+      - transient
+
+#parts:
+#  calibre-web-charm:
+#    plugin: charm
+#    source: .
+#  version_data:
+#    plugin: dump
+#    source: ./files
+#    organize:
+#      "libxxx.so*": lib/
+#    prime:
+#      - lib/
 
 # This field populates the Resources tab on Charmhub.
 resources:
