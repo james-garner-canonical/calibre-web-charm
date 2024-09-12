@@ -13,6 +13,7 @@ https://juju.is/docs/sdk/create-a-minimal-kubernetes-charm
 """
 
 import logging
+import typing
 from pathlib import Path
 from typing import cast
 
@@ -27,75 +28,119 @@ CALIBRE_WEB_CONTAINER = 'calibre-web'
 STORAGE_NAME = 'books'
 
 
+class CaptureStdOut:
+    """For debugging."""
+
+    def __init__(self):
+        self.lines: list[str] = []
+
+    def write(self, stuff: str) -> None:
+        self.lines.append(stuff)
+
+
 class CalibreWebCharmCharm(ops.CharmBase):
     """Charm the service."""
 
-    def __init__(self, framework: ops.Framework):
+    def __init__(self, framework: ops.Framework) -> None:
         super().__init__(framework)
         framework.observe(self.on[CALIBRE_WEB_CONTAINER].pebble_ready, self._on_pebble_ready)
         framework.observe(self.on[STORAGE_NAME].storage_attached, self._on_storage_attached)
         self.unit.set_ports(8083)
         #framework.observe(self.on.config_changed, self._on_config_changed)
 
-    def _on_pebble_ready(self, event: ops.PebbleReadyEvent):
-        """Define and start a workload using the Pebble API.
-
-        Change this example to suit your needs. You'll need to specify the right entrypoint and
-        environment configuration for your specific workload.
-
-        Learn more about interacting with Pebble at at https://juju.is/docs/sdk/pebble.
-        """
-        # Get a reference the container attribute on the PebbleReadyEvent
+    def _on_pebble_ready(self, event: ops.PebbleReadyEvent) -> None:
+        """Define and start a workload using the Pebble API."""
         container = event.workload
-        # Add initial Pebble config layer using the Pebble API
         container.add_layer("calibre-web", self._pebble_layer, combine=True)
-        # Make Pebble reevaluate its plan, ensuring any services are started if enabled.
         container.replan()
-        # Learn more about statuses in the SDK docs:
-        # https://juju.is/docs/sdk/constructs#heading--statuses
         self.unit.status = ops.ActiveStatus()
 
-    def _on_storage_attached(self, event: ops.StorageAttachedEvent):
-        def push_and_extract_library(container: ops.Container, library: bytes):
-            logger.debug("_on_storage_attached: push_and_extract_library")
-            logger.debug("push_and_extract_library: installing dependencies")
-            container.exec(['apt', 'update']).wait()
-            container.exec(['apt', 'install', 'dtrx', '-y']).wait()
-            logger.debug("push_and_extract_library: copying library")
-            container.push('/books/library.zip', library)
-            container.exec(['dtrx', '--noninteractive', 'library.zip'], working_dir='/books').wait()
-            container.exec(['bash', '-c', 'mv /books/library/* /books/']).wait()
-            container.exec(['rm', '/books/library.zip']).wait()
-            container.exec(['rmdir',  '/books/library']).wait()
-            logger.debug("push_and_extract_library: done")
+    @property
+    def _pebble_layer(self) -> ops.pebble.LayerDict:
+        """Return a dictionary representing a Pebble layer."""
+        c = " && ".join([
+            "bash /etc/s6-overlay/s6-rc.d/init-calibre-web-config/run",  # with bash because the shebang depends on s6
+            "export CALIBRE_DBPATH=/config",
+            "cd /app/calibre-web",
+            "python3 /app/calibre-web/cps.py",
+        ])
+        command = f"bash -c '{c}'"
+        return {
+            "summary": "calibre-web layer",
+            "description": "pebble config layer for calibre-web",
+            "services": {
+                "calibre-web": {
+                    "override": "replace",
+                    "summary": "calibre-web",
+                    "command": command,
+                    "startup": "enabled",
+                    "environment": {
+                        'PUID': '1000',  # copied from example docker run
+                        'PGID': '1000',  # copied from example docker run
+                        'TZ': 'Etc/UTC',  # copied from example docker run
+                    },
+                    #'restart': 'unless-stopped',
+                }
+            },
+        }
 
-        logger.debug("_on_storage_attached")
+    def _on_storage_attached(self, event: ops.StorageAttachedEvent):
+        """Push user provided or default calibre-library resource to storage."""
         container = self.framework.model.unit.containers[CALIBRE_WEB_CONTAINER]
         logger.debug(f"_on_storage_attached: {container=}")
         library_path = Path(self.framework.model.resources.fetch('calibre-library'))
         library = library_path.read_bytes()
         if len(library):  # user provided library
             logger.debug(f"_on_storage_attached: {library_path=}")
-            push_and_extract_library(container, library)
-        else:  # default library
+            self._push_and_extract_library(container, library)
+        else:  # use default library
             library_path = Path('.') / 'library.zip'
             logger.debug(f"_on_storage_attached: {library_path=}")
             library = library_path.read_bytes()
             assert library
-            push_and_extract_library(container, library)
-        if container.exists('/books/Calibre Library'):  # as a result of a push_and_extract
-            logger.debug("_on_storage_attached: moving /books/Calibre Library contents to /books")
-            container.exec(
-                ['bash', '-c', 'mv --force ./* ./.[!.]* /books/'],
-                working_dir='/books/Calibre Library',
-            )
-            container.exec(['rmdir', '/books/Calibre Library'])
+            self._push_and_extract_library(container, library)
 
-            #class FakeOut:
-            #    def __init__(self):
-            #        self.lines = []
-            #    def write(self, stuff):
-            #        self.lines.append(stuff)
+    def _push_and_extract_library(self, container: ops.Container, library: bytes) -> None:
+        logger.debug("_push_and_extract_library: installing dependencies")
+        # use dtrx to extract library due to its consistent behaviour over many archive types
+        # faster after the first time, but would it be faster to check for dtrx first?
+        # alternatively just add dtrx to the docker image
+        container.exec(['apt', 'update']).wait()
+        container.exec(['apt', 'install', 'dtrx', '-y']).wait()
+
+        logger.debug("_push_and_extract_library: copying library")
+        container.push('/books/library.zip', library)
+
+        logger.debug("_push_and_extract_library: extracting library")
+        container.exec(
+            ['dtrx', '--noninteractive', '--overwrite', 'library.zip'],
+            working_dir='/books',
+        ).wait()
+        # dtrx always extracts into a folder named after the archive
+        logger.debug("_push_and_extract_library: flattening /books/library/ to /books/")
+        move_contents_up_one_level = [
+            'bash',
+            '-c',
+            (
+                'shopt -s nullglob ; '
+                'mv --force --target-directory=../ ./* ./.[!.]* '
+                '|| true'  # ignore no matches in glob
+            )
+        ]
+        container.exec(move_contents_up_one_level, working_dir='/books/library').wait()
+        #combine_stderr=True, stderr=None, stdout=cast(typing.BinaryIO, (stdout := CaptureStdOut())),
+        container.exec(['rmdir',  '/books/library']).wait()
+        container.exec(['rm', '/books/library.zip']).wait()
+
+        # library.zip may contain the library contents directly, or inside a 'Calibre Library' directory
+        if container.exists('/books/Calibre Library'):
+            logger.debug(
+                "_push_and_extract_library: flattening /books/Calibre Library/ contents to /books"
+            )
+            container.exec(move_contents_up_one_level, working_dir='/books/Calibre Library').wait()
+            container.exec(['rmdir', '/books/Calibre Library']).wait()
+        logger.debug("push_and_extract_library: done")
+
             #f = FakeOut()
             #try:
             #    logger.debug("moving all files to books, this normally fails")
@@ -157,36 +202,6 @@ class CalibreWebCharmCharm(ops.CharmBase):
     #    else:
     #        # In this case, the config option is bad, so block the charm and notify the operator.
     #        self.unit.status = ops.BlockedStatus("invalid log level: '{log_level}'")
-
-    @property
-    def _pebble_layer(self) -> ops.pebble.LayerDict:
-        """Return a dictionary representing a Pebble layer."""
-
-        c = " && ".join([
-            "bash /etc/s6-overlay/s6-rc.d/init-calibre-web-config/run",  # with bash because the shebang depends on s6
-            "export CALIBRE_DBPATH=/config",
-            "cd /app/calibre-web",
-            "python3 /app/calibre-web/cps.py",
-        ])
-        command = f"bash -c '{c}'"
-        return {
-            "summary": "calibre-web layer",
-            "description": "pebble config layer for calibre-web",
-            "services": {
-                "calibre-web": {
-                    "override": "replace",
-                    "summary": "calibre-web",
-                    "command": command,
-                    "startup": "enabled",
-                    "environment": {
-                        'PUID': 1000,  # copied from example docker run
-                        'PGID': 1000,  # copied from example docker run
-                        'TZ': 'Etc/UTC',  # copied from example docker run
-                    },
-                    'restart': 'unless-stopped',
-                }
-            },
-        }
 
 
 if __name__ == "__main__":  # pragma: nocover
