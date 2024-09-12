@@ -82,13 +82,13 @@ storage:
     properties:
       - transient
 
-#parts:
-#  calibre-web-charm:
-#    plugin: charm
-#    source: .
-#  version_data:
-#    plugin: dump
-#    source: ./files
+parts:
+  calibre-web-charm:
+    plugin: charm
+    source: .
+  default-calibre-library:
+    plugin: dump
+    source: ./files
 #    organize:
 #      "libxxx.so*": lib/
 #    prime:
@@ -106,3 +106,8 @@ resources:
     # during testing. This field is also used by the 'canonical/charming-actions'
     # Github action for automated releasing.
     upstream-source: linuxserver/calibre-web
+  calibre-library:
+    type: file
+    description: zip file containing metadata.db and (optionally) books in author subdirectories
+    filename: library.zip
+

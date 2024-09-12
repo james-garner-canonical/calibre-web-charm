@@ -1,0 +1,2 @@
+charmcraft pack
+juju deploy ./calibre-web-charm_ubuntu-22.04-amd64.charm --resource calibre-web-image=lscr.io/linuxserver/calibre-web:latest --resource calibre-library=./empty.zip
