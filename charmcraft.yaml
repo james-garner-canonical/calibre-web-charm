@@ -50,15 +50,18 @@ bases:
 # General configuration documentation: https://juju.is/docs/sdk/config
 config:
   options:
-    # An example config option to customise the log level of the workload
-    log-level:
-      description: |
-        Configures the log level of gunicorn.
-
-        Acceptable values are: "info", "debug", "warning", "error" and "critical"
-      default: "info"
+    library-write:
+      default: skip
       type: string
+      description: |
+        What to do when /books/ contains something already. Options are:
+        skip (do nothing),
+        clean (delete the contents of /books/ and then extract the provided library or the default if none is provided).
+        Changing this value after storage has already been attached will immediately re-run the storage attached event handler,
+        potentially resulting in cleaning or overwriting the current contents of /books/.
 
+# removed library-write option:
+        #overwrite (extract the provided library on top of the existing one if one is provided),
 
 # The containers and resources metadata apply to Kubernetes charms only.
 # See https://juju.is/docs/sdk/metadata-reference for a checklist and guidance.
@@ -110,4 +113,5 @@ resources:
     type: file
     description: zip file containing metadata.db and (optionally) books in author subdirectories
     filename: library.zip
-
+# I got the idea for an empty default resource from here:
+# https://github.com/canonical/openstack-exporter-operator/blob/main/charmcraft.yaml
