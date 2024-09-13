@@ -12,6 +12,7 @@ develop a new k8s charm using the Operator Framework:
 https://juju.is/docs/sdk/create-a-minimal-kubernetes-charm
 """
 
+import base64
 import logging
 import typing
 from pathlib import Path
@@ -25,8 +26,14 @@ logger = logging.getLogger(__name__)
 CONTAINER_NAME = 'calibre-web'
 STORAGE_NAME = 'books'
 LIBRARY_WRITE_BEHAVIOUR_KEY = 'library-write'
+GET_LIBRARY_ACTION = 'get-library'
+GET_LIBRARY_FORMAT_PARAM = 'format'
+LIBRARY_WRITE_ACTION = 'library-write'
 
-LibraryWriteBehaviour: typing.TypeAlias = typing.Literal["skip", "clean"]  #, "overwrite"]
+GetLibraryFormatParamValue: typing.TypeAlias = typing.Literal['tree', 'ls-1']  #, 'zip']
+GET_LIBRARY_FORMAT_PARAM_VALUES = typing.get_args(GetLibraryFormatParamValue)
+
+LibraryWriteBehaviour: typing.TypeAlias = typing.Literal['skip', 'clean']  #, 'overwrite']
 LIBRARY_WRITE_BEHAVIOURS = typing.get_args(LibraryWriteBehaviour)
 
 class CaptureStdOut:
@@ -48,6 +55,8 @@ class CalibreWebCharmCharm(ops.CharmBase):
         framework.observe(self.on[STORAGE_NAME].storage_attached, self._on_storage_attached)
         framework.observe(self.on.config_changed, self._on_config_changed)
         framework.observe(self.on.collect_unit_status, self._on_collect_status)
+        framework.observe(self.on[GET_LIBRARY_ACTION].action, self._on_get_library)
+        framework.observe(self.on[LIBRARY_WRITE_ACTION].action, self._on_library_write)
         self.unit.set_ports(8083)
 
     def _on_pebble_ready(self, event: ops.PebbleReadyEvent) -> None:
@@ -87,7 +96,56 @@ class CalibreWebCharmCharm(ops.CharmBase):
             },
         }
 
-    def _on_storage_attached(self, event: ops.StorageAttachedEvent):
+    def _on_get_library(self, event: ops.ActionEvent) -> None:
+        format = cast(str, event.params[GET_LIBRARY_FORMAT_PARAM])
+        if format not in GET_LIBRARY_FORMAT_PARAM_VALUES:
+            msg = (
+                f"Invalid value {format} for {GET_LIBRARY_FORMAT_PARAM} parameter"
+                f" of {GET_LIBRARY_ACTION} action."
+            )
+            self._add_status(ops.BlockedStatus(msg))
+            return
+        format = cast(GetLibraryFormatParamValue, format)
+        container = self.framework.model.unit.containers[CONTAINER_NAME]
+        match format:
+            case 'tree':
+                logger.debug('_on_get_library: tree: installing dependencies')
+                container.exec(['apt', 'update']).wait()
+                container.exec(['apt', 'install', 'tree', '-y']).wait()
+                logger.debug('_on_get_library: tree: executing')
+                process = container.exec(
+                    ['tree'],
+                    working_dir='/books/',
+                    stdout=cast(typing.BinaryIO, (stdout := CaptureStdOut())),
+                )
+                process.wait()
+                event.set_results({'tree': '\n'.join(stdout.lines)})
+            case 'ls-1':
+                logger.debug('_on_get_library: tree: executing')
+                process = container.exec(
+                    ['ls', '-1'],
+                    working_dir='/books/',
+                    stdout=cast(typing.BinaryIO, (stdout := CaptureStdOut())),
+                )
+                process.wait()
+                event.set_results({'ls-1': '\n'.join(stdout.lines)})
+            #case 'zip':
+            #    logger.debug('_on_get_library: zip: installing dependencies')
+            #    container.exec(['apt', 'update']).wait()
+            #    container.exec(['apt', 'install', 'zip', '-y']).wait()
+            #    container.exec(
+            #        ['zip', '-r', 'library.zip', './'],
+            #        working_dir='/books/',
+            #        stdout=cast(typing.BinaryIO, (stdout := CaptureStdOut())),
+            #    ).wait()
+            #    binary = container.pull('/books/library.zip', encoding=None).read()
+            #    string = base64.encodebytes(binary)
+            #    event.set_results({'zip': string})  # OSError: Argument list too long
+
+    def _on_library_write(self, event: ops.ActionEvent) -> None:
+        self._push_library_to_storage()
+
+    def _on_storage_attached(self, event: ops.StorageAttachedEvent) -> None:
         self._push_library_to_storage()
 
     def _push_library_to_storage(self) -> None:
@@ -149,6 +207,8 @@ class CalibreWebCharmCharm(ops.CharmBase):
                 'shopt -s nullglob ; '
                 'mv --force --target-directory=../ ./* ./.[!.]* '
                 '|| true'  # ignore no matches in glob ... in addition to other errors >:(
+                # mv will fail if any directories colide (--force doesn't overwrite dirs)
+                # but they shouldn't since we only run this if we first clean /books/
             ),
         ]
         container.exec(move_contents_up_one_level, working_dir='/books/library').wait()

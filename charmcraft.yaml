@@ -115,3 +115,17 @@ resources:
     filename: library.zip
 # I got the idea for an empty default resource from here:
 # https://github.com/canonical/openstack-exporter-operator/blob/main/charmcraft.yaml
+
+actions:
+  library-write:
+    description: Write library to disk as if storage had just been attached
+  get-library:
+    description: Output library (or info) to stdout
+    params:
+      format:
+        type: string
+        default: tree
+        description: |
+          Format to output. Options are:
+          tree (show library structure as an ascii tree),
+          zip (zipped library, suitable for use as a calibre-library resource).
