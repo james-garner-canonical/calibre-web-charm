@@ -12,7 +12,6 @@ develop a new k8s charm using the Operator Framework:
 https://juju.is/docs/sdk/create-a-minimal-kubernetes-charm
 """
 
-import base64
 import logging
 import typing
 from pathlib import Path
@@ -30,10 +29,10 @@ GET_LIBRARY_ACTION = 'get-library'
 GET_LIBRARY_FORMAT_PARAM = 'format'
 LIBRARY_WRITE_ACTION = 'library-write'
 
-GetLibraryFormatParamValue: typing.TypeAlias = typing.Literal['tree', 'ls-1']  #, 'zip']
+GetLibraryFormatParamValue: typing.TypeAlias = typing.Literal['tree', 'ls-1']  # , 'zip']
 GET_LIBRARY_FORMAT_PARAM_VALUES = typing.get_args(GetLibraryFormatParamValue)
 
-LibraryWriteBehaviour: typing.TypeAlias = typing.Literal['skip', 'clean']  #, 'overwrite']
+LibraryWriteBehaviour: typing.TypeAlias = typing.Literal['skip', 'clean']  # , 'overwrite']
 LIBRARY_WRITE_BEHAVIOURS = typing.get_args(LibraryWriteBehaviour)
 
 class CaptureStdOut:
