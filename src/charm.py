@@ -133,18 +133,6 @@ class CalibreWebCharm(ops.CharmBase):
                 )
                 logger.error(f'_on_library_info: {format}: {msg}')
                 event.fail(msg)
-            #case 'zip':
-            #    logger.debug('_on_library_info: zip: installing dependencies')
-            #    container.exec(['apt', 'update']).wait()
-            #    container.exec(['apt', 'install', 'zip', '-y']).wait()
-            #    container.exec(
-            #        ['zip', '-r', 'library.zip', './'],
-            #        working_dir='/books/',
-            #        stdout=cast(typing.BinaryIO, (stdout := CaptureStdOut())),
-            #    ).wait()
-            #    binary = container.pull('/books/library.zip', encoding=None).read()
-            #    string = base64.encodebytes(binary)
-            #    event.set_results({'zip': string})  # OSError: Argument list too long
 
     def _on_library_write(self, event: ops.ActionEvent) -> None:
         self._push_library_to_storage()
@@ -226,8 +214,6 @@ class CalibreWebCharm(ops.CharmBase):
             ),
         ]
         container.exec(move_contents_up_one_level, working_dir=directory).wait()
-        #extra exec kwargs when debugging:
-        #kwargs = dict(combine_stderr=True, stderr=None, stdout=cast(typing.BinaryIO, (stdout := CaptureStdOut())))
         container.exec(['rmdir',  directory]).wait()  # error if not empty
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent):
