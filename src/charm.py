@@ -87,16 +87,8 @@ class CalibreWebCharmCharm(ops.CharmBase):
         }
 
     def _on_library_info(self, event: ops.ActionEvent) -> None:
-        format = cast(str, event.params[GET_LIBRARY_FORMAT_PARAM])
-        if format not in GET_LIBRARY_FORMAT_PARAM_VALUES:
-            msg = (
-                f"Invalid value {format} for {GET_LIBRARY_FORMAT_PARAM} parameter"
-                f" of {GET_LIBRARY_ACTION} action."
-            )
-            self._add_status(ops.BlockedStatus(msg))
-            return
-        format = cast(GetLibraryFormatParamValue, format)
         container = self.framework.model.unit.containers[CONTAINER_NAME]
+        format = cast(str, event.params[GET_LIBRARY_FORMAT_PARAM])
         match format:
             case 'tree':
                 try:
@@ -122,6 +114,13 @@ class CalibreWebCharmCharm(ops.CharmBase):
                 )
                 process.wait()
                 event.set_results({'ls-1': '\n'.join(stdout.lines)})
+            case _:
+                msg = (
+                    f"Invalid value {format} for {GET_LIBRARY_FORMAT_PARAM} parameter"
+                    f" of {GET_LIBRARY_ACTION} action."
+                )
+                logger.error(f'_on_library_info: {format}: {msg}')
+                event.fail(msg)
             #case 'zip':
             #    logger.debug('_on_library_info: zip: installing dependencies')
             #    container.exec(['apt', 'update']).wait()
@@ -143,9 +142,8 @@ class CalibreWebCharmCharm(ops.CharmBase):
 
     def _push_library_to_storage(self) -> None:
         """Push user provided or default calibre-library resource to storage."""
-        try:
-            library_write_behaviour = self._library_write_behaviour
-        except ValueError:
+        library_write_behaviour, _ = self._get_library_write_behaviour()
+        if library_write_behaviour is None:
             return
         container = self.framework.model.unit.containers[CONTAINER_NAME]
         if (contents := container.list_files('/books/')):
@@ -225,26 +223,16 @@ class CalibreWebCharmCharm(ops.CharmBase):
         logger.debug("_on_config_changed")
         self._push_library_to_storage()
 
-    @property
-    def _library_write_behaviour(self) -> LibraryWriteBehaviour:
-        library_write_behaviour = cast(str, self.model.config[LIBRARY_WRITE_BEHAVIOUR_KEY]).lower()
+    def _get_library_write_behaviour(self) -> tuple[LibraryWriteBehaviour, ops.ActiveStatus] | tuple[None, ops.BlockedStatus]:
+        library_write_behaviour = self.model.config[LIBRARY_WRITE_BEHAVIOUR_KEY]
         if library_write_behaviour not in LIBRARY_WRITE_BEHAVIOURS:
             msg = f"invalid {LIBRARY_WRITE_BEHAVIOUR_KEY}: '{library_write_behaviour}'"
-            self._add_status(ops.BlockedStatus(msg))
-            raise ValueError(msg)
-        return cast(LibraryWriteBehaviour, library_write_behaviour)
+            return None, ops.BlockedStatus(msg)
+        return cast(LibraryWriteBehaviour, library_write_behaviour), ops.ActiveStatus()
 
     def _on_collect_status(self, event: ops.CollectStatusEvent) -> None:
-        try:
-            self._library_write_behaviour
-        except ValueError:
-            pass
         event.add_status(ops.ActiveStatus())
-
-    def _add_status(self, status: ops.StatusBase) -> None:
-        """Dirty hack to add status outside _on_collect_status for auto prioritisation."""
-        event = ops.CollectStatusEvent(ops.Handle(parent=None, key=None, kind="whatever"))
-        event.framework = self.framework
+        _, status = self._get_library_write_behaviour()
         event.add_status(status)
 
 
