@@ -54,13 +54,18 @@ class CalibreWebCharm(ops.CharmBase):
 
     def __init__(self, framework: ops.Framework) -> None:
         super().__init__(framework)
+        framework.observe(self.on.collect_unit_status, self._on_collect_status)
         framework.observe(self.on[CONTAINER_NAME].pebble_ready, self._on_pebble_ready)
         framework.observe(self.on[STORAGE_NAME].storage_attached, self._on_storage_attached)
         framework.observe(self.on.config_changed, self._on_config_changed)
-        framework.observe(self.on.collect_unit_status, self._on_collect_status)
-        framework.observe(self.on[GET_LIBRARY_ACTION].action, self._on_library_info)
         framework.observe(self.on[LIBRARY_WRITE_ACTION].action, self._on_library_write)
+        framework.observe(self.on[GET_LIBRARY_ACTION].action, self._on_library_info)
         self.unit.set_ports(8083)
+
+    def _on_collect_status(self, event: ops.CollectStatusEvent) -> None:
+        event.add_status(ops.ActiveStatus())
+        _, status = self._get_library_write_behaviour()
+        event.add_status(status)
 
     def _on_pebble_ready(self, event: ops.PebbleReadyEvent) -> None:
         """Define and start a workload using the Pebble API."""
@@ -69,34 +74,16 @@ class CalibreWebCharm(ops.CharmBase):
         container.replan()
         self.unit.status = ops.ActiveStatus()
 
-    @staticmethod
-    def get_pebble_layer() -> CalibreWebLayerDict:
-        """Return a dictionary representing a Pebble layer."""
-        c = " && ".join([
-            "bash /etc/s6-overlay/s6-rc.d/init-calibre-web-config/run",
-            # with bash because the run script shebang depends on s6
-            "export CALIBRE_DBPATH=/config",
-            "cd /app/calibre-web",
-            "python3 /app/calibre-web/cps.py",
-        ])
-        command = f"bash -c '{c}'"
-        return {
-            "summary": f"{SERVICE_NAME} layer",
-            "description": f"pebble config layer for {SERVICE_NAME}",
-            "services": {
-                SERVICE_NAME: {
-                    "override": "replace",
-                    "summary": "calibre-web",
-                    "command": command,
-                    "startup": "enabled",
-                    "environment": {
-                        'PUID': '1000',  # copied from example docker run
-                        'PGID': '1000',  # copied from example docker run
-                        'TZ': 'Etc/UTC',  # copied from example docker run
-                    },
-                }
-            },
-        }
+    def _on_storage_attached(self, event: ops.StorageAttachedEvent) -> None:
+        self._push_library_to_storage()
+
+    def _on_config_changed(self, event: ops.ConfigChangedEvent):
+        """Handle changed configuration."""
+        logger.debug("_on_config_changed")
+        self._push_library_to_storage()
+
+    def _on_library_write(self, event: ops.ActionEvent) -> None:
+        self._push_library_to_storage()
 
     def _on_library_info(self, event: ops.ActionEvent) -> None:
         container = self.framework.model.unit.containers[CONTAINER_NAME]
@@ -134,11 +121,34 @@ class CalibreWebCharm(ops.CharmBase):
                 logger.error(f'_on_library_info: {format}: {msg}')
                 event.fail(msg)
 
-    def _on_library_write(self, event: ops.ActionEvent) -> None:
-        self._push_library_to_storage()
-
-    def _on_storage_attached(self, event: ops.StorageAttachedEvent) -> None:
-        self._push_library_to_storage()
+    @staticmethod
+    def get_pebble_layer() -> CalibreWebLayerDict:
+        """Return a dictionary representing a Pebble layer."""
+        c = " && ".join([
+            "bash /etc/s6-overlay/s6-rc.d/init-calibre-web-config/run",
+            # with bash because the run script shebang depends on s6
+            "export CALIBRE_DBPATH=/config",
+            "cd /app/calibre-web",
+            "python3 /app/calibre-web/cps.py",
+        ])
+        command = f"bash -c '{c}'"
+        return {
+            "summary": f"{SERVICE_NAME} layer",
+            "description": f"pebble config layer for {SERVICE_NAME}",
+            "services": {
+                SERVICE_NAME: {
+                    "override": "replace",
+                    "summary": "calibre-web",
+                    "command": command,
+                    "startup": "enabled",
+                    "environment": {
+                        'PUID': '1000',  # copied from example docker run
+                        'PGID': '1000',  # copied from example docker run
+                        'TZ': 'Etc/UTC',  # copied from example docker run
+                    },
+                }
+            },
+        }
 
     def _push_library_to_storage(self) -> None:
         """Push user provided or default calibre-library resource to storage."""
@@ -171,6 +181,13 @@ class CalibreWebCharm(ops.CharmBase):
         assert library
         logger.debug(f"_push_library_to_storage: {library_path=}")
         self._push_and_extract_library(container, library)
+
+    def _get_library_write_behaviour(self) -> tuple[LibraryWriteBehaviour, ops.ActiveStatus] | tuple[None, ops.BlockedStatus]:
+        library_write_behaviour = self.model.config[LIBRARY_WRITE_CONFIG]
+        if library_write_behaviour not in LIBRARY_WRITE_BEHAVIOURS:
+            msg = f"invalid {LIBRARY_WRITE_CONFIG}: '{library_write_behaviour}'"
+            return None, ops.BlockedStatus(msg)
+        return cast(LibraryWriteBehaviour, library_write_behaviour), ops.ActiveStatus()
 
     def _push_and_extract_library(self, container: ops.Container, library: bytes) -> None:
         # use dtrx to extract library due to its consistent behaviour over many archive types
@@ -215,23 +232,6 @@ class CalibreWebCharm(ops.CharmBase):
         ]
         container.exec(move_contents_up_one_level, working_dir=directory).wait()
         container.exec(['rmdir',  directory]).wait()  # error if not empty
-
-    def _on_config_changed(self, event: ops.ConfigChangedEvent):
-        """Handle changed configuration."""
-        logger.debug("_on_config_changed")
-        self._push_library_to_storage()
-
-    def _get_library_write_behaviour(self) -> tuple[LibraryWriteBehaviour, ops.ActiveStatus] | tuple[None, ops.BlockedStatus]:
-        library_write_behaviour = self.model.config[LIBRARY_WRITE_CONFIG]
-        if library_write_behaviour not in LIBRARY_WRITE_BEHAVIOURS:
-            msg = f"invalid {LIBRARY_WRITE_CONFIG}: '{library_write_behaviour}'"
-            return None, ops.BlockedStatus(msg)
-        return cast(LibraryWriteBehaviour, library_write_behaviour), ops.ActiveStatus()
-
-    def _on_collect_status(self, event: ops.CollectStatusEvent) -> None:
-        event.add_status(ops.ActiveStatus())
-        _, status = self._get_library_write_behaviour()
-        event.add_status(status)
 
 
 class CaptureStdOut:
