@@ -6,18 +6,18 @@
 import ops
 import ops.testing
 import pytest
-from charm import CalibreWebCharmCharm
+from charm import CalibreWebCharm
 
 
 @pytest.fixture
 def harness():
-    harness = ops.testing.Harness(CalibreWebCharmCharm)
+    harness = ops.testing.Harness(CalibreWebCharm)
     harness.begin()
     yield harness
     harness.cleanup()
 
 
-def test_httpbin_pebble_ready(harness: ops.testing.Harness[CalibreWebCharmCharm]):
+def test_httpbin_pebble_ready(harness: ops.testing.Harness[CalibreWebCharm]):
     # Expected plan after Pebble ready with default config
     expected_plan = {
         "services": {
@@ -43,7 +43,7 @@ def test_httpbin_pebble_ready(harness: ops.testing.Harness[CalibreWebCharmCharm]
     assert harness.model.unit.status == ops.ActiveStatus()
 
 
-def test_config_changed_valid_can_connect(harness: ops.testing.Harness[CalibreWebCharmCharm]):
+def test_config_changed_valid_can_connect(harness: ops.testing.Harness[CalibreWebCharm]):
     # Ensure the simulated Pebble API is reachable
     harness.set_can_connect("httpbin", True)
     # Trigger a config-changed event with an updated value
@@ -56,14 +56,14 @@ def test_config_changed_valid_can_connect(harness: ops.testing.Harness[CalibreWe
     assert harness.model.unit.status == ops.ActiveStatus()
 
 
-def test_config_changed_valid_cannot_connect(harness: ops.testing.Harness[CalibreWebCharmCharm]):
+def test_config_changed_valid_cannot_connect(harness: ops.testing.Harness[CalibreWebCharm]):
     # Trigger a config-changed event with an updated value
     harness.update_config({"log-level": "debug"})
     # Check the charm is in WaitingStatus
     assert isinstance(harness.model.unit.status, ops.WaitingStatus)
 
 
-def test_config_changed_invalid(harness: ops.testing.Harness[CalibreWebCharmCharm]):
+def test_config_changed_invalid(harness: ops.testing.Harness[CalibreWebCharm]):
     # Ensure the simulated Pebble API is reachable
     harness.set_can_connect("httpbin", True)
     # Trigger a config-changed event with an updated value

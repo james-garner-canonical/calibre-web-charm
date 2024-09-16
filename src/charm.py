@@ -36,7 +36,7 @@ LibraryWriteBehaviour: typing.TypeAlias = typing.Literal['skip', 'clean']  # , '
 LIBRARY_WRITE_BEHAVIOURS = typing.get_args(LibraryWriteBehaviour)
 
 
-class CalibreWebCharmCharm(ops.CharmBase):
+class CalibreWebCharm(ops.CharmBase):
     """Charm the service."""
 
     def __init__(self, framework: ops.Framework) -> None:
@@ -251,4 +251,4 @@ class CaptureStdOut:
 
 
 if __name__ == "__main__":  # pragma: nocover
-    ops.main(CalibreWebCharmCharm)  # type: ignore
+    ops.main(CalibreWebCharm)  # type: ignore

@@ -4,7 +4,7 @@
 # (Required)
 # The charm package name, no spaces
 # See https://juju.is/docs/sdk/naming#heading--naming-charms for guidance.
-name: calibre-web-charm
+name: calibre-web
 
 
 # (Required)
@@ -86,7 +86,7 @@ storage:
       - transient
 
 parts:
-  calibre-web-charm:
+  charm:
     plugin: charm
     source: .
   default-calibre-library:
