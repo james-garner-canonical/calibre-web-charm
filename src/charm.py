@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 CONTAINER_NAME = 'calibre-web'
 STORAGE_NAME = 'books'
 LIBRARY_WRITE_BEHAVIOUR_KEY = 'library-write'
-GET_LIBRARY_ACTION = 'get-library'
+GET_LIBRARY_ACTION = 'library-info'
 GET_LIBRARY_FORMAT_PARAM = 'format'
 LIBRARY_WRITE_ACTION = 'library-write'
 
@@ -54,7 +54,7 @@ class CalibreWebCharmCharm(ops.CharmBase):
         framework.observe(self.on[STORAGE_NAME].storage_attached, self._on_storage_attached)
         framework.observe(self.on.config_changed, self._on_config_changed)
         framework.observe(self.on.collect_unit_status, self._on_collect_status)
-        framework.observe(self.on[GET_LIBRARY_ACTION].action, self._on_get_library)
+        framework.observe(self.on[GET_LIBRARY_ACTION].action, self._on_library_info)
         framework.observe(self.on[LIBRARY_WRITE_ACTION].action, self._on_library_write)
         self.unit.set_ports(8083)
 
@@ -95,7 +95,7 @@ class CalibreWebCharmCharm(ops.CharmBase):
             },
         }
 
-    def _on_get_library(self, event: ops.ActionEvent) -> None:
+    def _on_library_info(self, event: ops.ActionEvent) -> None:
         format = cast(str, event.params[GET_LIBRARY_FORMAT_PARAM])
         if format not in GET_LIBRARY_FORMAT_PARAM_VALUES:
             msg = (
@@ -108,10 +108,13 @@ class CalibreWebCharmCharm(ops.CharmBase):
         container = self.framework.model.unit.containers[CONTAINER_NAME]
         match format:
             case 'tree':
-                logger.debug('_on_get_library: tree: installing dependencies')
-                container.exec(['apt', 'update']).wait()
-                container.exec(['apt', 'install', 'tree', '-y']).wait()
-                logger.debug('_on_get_library: tree: executing')
+                try:
+                    container.exec(['which', 'tree']).wait()
+                except ops.pebble.ExecError:
+                    logger.debug('_on_library_info: tree: installing dependencies')
+                    container.exec(['apt', 'update']).wait()
+                    container.exec(['apt', 'install', 'tree', '-y']).wait()
+                logger.debug('_on_library_info: tree: executing')
                 process = container.exec(
                     ['tree'],
                     working_dir='/books/',
@@ -120,7 +123,7 @@ class CalibreWebCharmCharm(ops.CharmBase):
                 process.wait()
                 event.set_results({'tree': '\n'.join(stdout.lines)})
             case 'ls-1':
-                logger.debug('_on_get_library: tree: executing')
+                logger.debug('_on_library_info: tree: executing')
                 process = container.exec(
                     ['ls', '-1'],
                     working_dir='/books/',
@@ -129,7 +132,7 @@ class CalibreWebCharmCharm(ops.CharmBase):
                 process.wait()
                 event.set_results({'ls-1': '\n'.join(stdout.lines)})
             #case 'zip':
-            #    logger.debug('_on_get_library: zip: installing dependencies')
+            #    logger.debug('_on_library_info: zip: installing dependencies')
             #    container.exec(['apt', 'update']).wait()
             #    container.exec(['apt', 'install', 'zip', '-y']).wait()
             #    container.exec(
@@ -181,13 +184,14 @@ class CalibreWebCharmCharm(ops.CharmBase):
         self._push_and_extract_library(container, library)
 
     def _push_and_extract_library(self, container: ops.Container, library: bytes) -> None:
-        logger.debug("_push_and_extract_library: installing dependencies")
         # use dtrx to extract library due to its consistent behaviour over many archive types
-        # faster after the first time, but would it be faster to check for dtrx first?
-        # alternatively just add dtrx to the docker image
-        container.exec(['apt', 'update']).wait()
-        container.exec(['apt', 'install', 'dtrx', '-y']).wait()
-
+        # could just add dtrx to the docker image? but it's somehow nice to use the off the shelf image
+        try:
+            container.exec(['which', 'dtrx']).wait()
+        except ops.pebble.ExecError:
+            logger.debug("_push_and_extract_library: installing dependencies")
+            container.exec(['apt', 'update']).wait()
+            container.exec(['apt', 'install', 'dtrx', '-y']).wait()
         logger.debug("_push_and_extract_library: copying library")
         container.push('/books/library.zip', library)
 

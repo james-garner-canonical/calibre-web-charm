@@ -58,7 +58,7 @@ config:
         skip (do nothing),
         clean (delete the contents of /books/ and then extract the provided library or the default if none is provided).
         Changing this value after storage has already been attached will immediately re-run the storage attached event handler,
-        potentially resulting in cleaning or overwriting the current contents of /books/.
+        potentially resulting in cleaning the current contents of /books/.
 
 # removed library-write option:
         #overwrite (extract the provided library on top of the existing one if one is provided),
@@ -119,8 +119,8 @@ resources:
 actions:
   library-write:
     description: Write library to disk as if storage had just been attached
-  get-library:
-    description: Output library (or info) to stdout
+  library-info:
+    description: Output library info
     params:
       format:
         type: string
@@ -128,4 +128,5 @@ actions:
         description: |
           Format to output. Options are:
           tree (show library structure as an ascii tree),
-          zip (zipped library, suitable for use as a calibre-library resource).
+          ls-1 (show top level of library (author folders) as a flat list).
+        #zip (zipped library, suitable for use as a calibre-library resource).
