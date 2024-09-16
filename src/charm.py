@@ -244,6 +244,10 @@ class CalibreWebCharmCharm(ops.CharmBase):
         return cast(LibraryWriteBehaviour, library_write_behaviour)
 
     def _on_collect_status(self, event: ops.CollectStatusEvent) -> None:
+        try:
+            self._library_write_behaviour
+        except ValueError:
+            pass
         event.add_status(ops.ActiveStatus())
 
     def _add_status(self, status: ops.StatusBase) -> None:
