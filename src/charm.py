@@ -23,11 +23,12 @@ import ops
 logger = logging.getLogger(__name__)
 
 CONTAINER_NAME = 'calibre-web'
+SERVICE_NAME = 'calibre-web'
 STORAGE_NAME = 'books'
 LIBRARY_WRITE_ACTION = 'library-write'
-LIBRARY_WRITE_BEHAVIOUR_KEY = 'library-write'
+LIBRARY_WRITE_CONFIG = 'library-write'
 GET_LIBRARY_ACTION = 'library-info'
-GET_LIBRARY_FORMAT_PARAM = 'format'
+GET_LIBRARY_FORMAT = 'format'
 
 GetLibraryFormatParamValue: typing.TypeAlias = typing.Literal['tree', 'ls-1']  # , 'zip']
 GET_LIBRARY_FORMAT_PARAM_VALUES = typing.get_args(GetLibraryFormatParamValue)
@@ -71,7 +72,7 @@ class CalibreWebCharm(ops.CharmBase):
             "summary": "calibre-web layer",
             "description": "pebble config layer for calibre-web",
             "services": {
-                "calibre-web": {
+                SERVICE_NAME: {
                     "override": "replace",
                     "summary": "calibre-web",
                     "command": command,
@@ -88,7 +89,7 @@ class CalibreWebCharm(ops.CharmBase):
 
     def _on_library_info(self, event: ops.ActionEvent) -> None:
         container = self.framework.model.unit.containers[CONTAINER_NAME]
-        format = cast(str, event.params[GET_LIBRARY_FORMAT_PARAM])
+        format = cast(str, event.params[GET_LIBRARY_FORMAT])
         match format:
             case 'tree':
                 try:
@@ -116,7 +117,7 @@ class CalibreWebCharm(ops.CharmBase):
                 event.set_results({'ls-1': '\n'.join(stdout.lines)})
             case _:
                 msg = (
-                    f"Invalid value {format} for {GET_LIBRARY_FORMAT_PARAM} parameter"
+                    f"Invalid value {format} for {GET_LIBRARY_FORMAT} parameter"
                     f" of {GET_LIBRARY_ACTION} action."
                 )
                 logger.error(f'_on_library_info: {format}: {msg}')
@@ -224,9 +225,9 @@ class CalibreWebCharm(ops.CharmBase):
         self._push_library_to_storage()
 
     def _get_library_write_behaviour(self) -> tuple[LibraryWriteBehaviour, ops.ActiveStatus] | tuple[None, ops.BlockedStatus]:
-        library_write_behaviour = self.model.config[LIBRARY_WRITE_BEHAVIOUR_KEY]
+        library_write_behaviour = self.model.config[LIBRARY_WRITE_CONFIG]
         if library_write_behaviour not in LIBRARY_WRITE_BEHAVIOURS:
-            msg = f"invalid {LIBRARY_WRITE_BEHAVIOUR_KEY}: '{library_write_behaviour}'"
+            msg = f"invalid {LIBRARY_WRITE_CONFIG}: '{library_write_behaviour}'"
             return None, ops.BlockedStatus(msg)
         return cast(LibraryWriteBehaviour, library_write_behaviour), ops.ActiveStatus()
 
