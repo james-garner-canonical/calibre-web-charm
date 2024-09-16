@@ -6,6 +6,8 @@
 import ops
 import ops.testing
 import pytest
+
+import charm
 from charm import CalibreWebCharm
 
 
@@ -17,56 +19,23 @@ def harness():
     harness.cleanup()
 
 
-def test_httpbin_pebble_ready(harness: ops.testing.Harness[CalibreWebCharm]):
-    # Expected plan after Pebble ready with default config
-    expected_plan = {
-        "services": {
-            "httpbin": {
-                "override": "replace",
-                "summary": "httpbin",
-                "command": "gunicorn -b 0.0.0.0:80 httpbin:app -k gevent",
-                "startup": "enabled",
-                "environment": {"GUNICORN_CMD_ARGS": "--log-level info"},
-            }
-        },
-    }
-    # Simulate the container coming up and emission of pebble-ready event
-    harness.container_pebble_ready("httpbin")
-    # Get the plan now we've run PebbleReady
-    updated_plan = harness.get_container_pebble_plan("httpbin").to_dict()
-    # Check we've got the plan we expected
+def test_pebble_ready(harness: ops.testing.Harness[CalibreWebCharm]):
+    # expected == actual
+    harness.container_pebble_ready(charm.CONTAINER_NAME)
+    updated_plan = harness.get_container_pebble_plan(charm.CONTAINER_NAME).to_dict()
+    expected_plan = {"services": CalibreWebCharm.get_pebble_layer()["services"]}
     assert expected_plan == updated_plan
-    # Check the service was started
-    service = harness.model.unit.get_container("httpbin").get_service("httpbin")
+    # running and active
+    service = harness.model.unit.get_container(charm.CONTAINER_NAME).get_service(charm.SERVICE_NAME)
     assert service.is_running()
-    # Ensure we set an ActiveStatus with no message
     assert harness.model.unit.status == ops.ActiveStatus()
 
 
-def test_config_changed_valid_can_connect(harness: ops.testing.Harness[CalibreWebCharm]):
-    # Ensure the simulated Pebble API is reachable
-    harness.set_can_connect("httpbin", True)
-    # Trigger a config-changed event with an updated value
-    harness.update_config({"log-level": "debug"})
-    # Get the plan now we've run PebbleReady
-    updated_plan = harness.get_container_pebble_plan("httpbin").to_dict()
-    updated_env = updated_plan["services"]["httpbin"]["environment"]
-    # Check the config change was effective
-    assert updated_env == {"GUNICORN_CMD_ARGS": "--log-level debug"}
-    assert harness.model.unit.status == ops.ActiveStatus()
-
-
-def test_config_changed_valid_cannot_connect(harness: ops.testing.Harness[CalibreWebCharm]):
-    # Trigger a config-changed event with an updated value
-    harness.update_config({"log-level": "debug"})
-    # Check the charm is in WaitingStatus
-    assert isinstance(harness.model.unit.status, ops.WaitingStatus)
-
-
-def test_config_changed_invalid(harness: ops.testing.Harness[CalibreWebCharm]):
-    # Ensure the simulated Pebble API is reachable
-    harness.set_can_connect("httpbin", True)
-    # Trigger a config-changed event with an updated value
-    harness.update_config({"log-level": "foobar"})
-    # Check the charm is in BlockedStatus
-    assert isinstance(harness.model.unit.status, ops.BlockedStatus)
+#def test_config_changed(harness: ops.testing.Harness[CalibreWebCharm]):
+#    harness.set_can_connect(charm.CONTAINER_NAME, True)
+#    for val in charm.LIBRARY_WRITE_BEHAVIOURS:
+#        pass
+#        # harness.update_config({charm.LIBRARY_WRITE_CONFIG: val})
+#        # this triggers _push_library_to_storage
+#        # which writes files into the calibre-web container's attached storage
+#        # how to unit test this?
