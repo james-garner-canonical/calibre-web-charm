@@ -24,25 +24,16 @@ logger = logging.getLogger(__name__)
 
 CONTAINER_NAME = 'calibre-web'
 STORAGE_NAME = 'books'
+LIBRARY_WRITE_ACTION = 'library-write'
 LIBRARY_WRITE_BEHAVIOUR_KEY = 'library-write'
 GET_LIBRARY_ACTION = 'library-info'
 GET_LIBRARY_FORMAT_PARAM = 'format'
-LIBRARY_WRITE_ACTION = 'library-write'
 
 GetLibraryFormatParamValue: typing.TypeAlias = typing.Literal['tree', 'ls-1']  # , 'zip']
 GET_LIBRARY_FORMAT_PARAM_VALUES = typing.get_args(GetLibraryFormatParamValue)
 
 LibraryWriteBehaviour: typing.TypeAlias = typing.Literal['skip', 'clean']  # , 'overwrite']
 LIBRARY_WRITE_BEHAVIOURS = typing.get_args(LibraryWriteBehaviour)
-
-class CaptureStdOut:
-    """For debugging."""
-
-    def __init__(self):
-        self.lines: list[str] = []
-
-    def write(self, stuff: str) -> None:
-        self.lines.append(stuff)
 
 
 class CalibreWebCharmCharm(ops.CharmBase):
@@ -255,6 +246,20 @@ class CalibreWebCharmCharm(ops.CharmBase):
         event = ops.CollectStatusEvent(ops.Handle(parent=None, key=None, kind="whatever"))
         event.framework = self.framework
         event.add_status(status)
+
+
+class CaptureStdOut:
+    """Capture stdout when executing processes.
+
+    The default stdout stream is often closed when we try to read it after a process completes.
+    This captures stdout in a simple list for later reading.
+    """
+
+    def __init__(self):
+        self.lines: list[str] = []
+
+    def write(self, stuff: str) -> None:
+        self.lines.append(stuff)
 
 
 if __name__ == "__main__":  # pragma: nocover
