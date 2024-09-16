@@ -15,7 +15,7 @@ https://juju.is/docs/sdk/create-a-minimal-kubernetes-charm
 import logging
 import typing
 from pathlib import Path
-from typing import cast
+from typing import NotRequired, cast
 
 import ops
 
@@ -37,6 +37,18 @@ LibraryWriteBehaviour: typing.TypeAlias = typing.Literal['skip', 'clean']  # , '
 LIBRARY_WRITE_BEHAVIOURS = typing.get_args(LibraryWriteBehaviour)
 
 
+CalibreWebLayerDict = typing.TypedDict(
+    'CalibreWebLayerDict',
+    {
+        'summary': str,
+        'description': str,
+        'services': dict[str, ops.pebble.ServiceDict],
+        'checks': NotRequired[dict[str, ops.pebble.CheckDict]],
+        'log-targets': NotRequired[dict[str, ops.pebble.LogTargetDict]],
+    },
+)
+
+
 class CalibreWebCharm(ops.CharmBase):
     """Charm the service."""
 
@@ -53,12 +65,12 @@ class CalibreWebCharm(ops.CharmBase):
     def _on_pebble_ready(self, event: ops.PebbleReadyEvent) -> None:
         """Define and start a workload using the Pebble API."""
         container = event.workload
-        container.add_layer("calibre-web", self._pebble_layer, combine=True)
+        container.add_layer(SERVICE_NAME, {**self.get_pebble_layer()}, combine=True)
         container.replan()
         self.unit.status = ops.ActiveStatus()
 
-    @property
-    def _pebble_layer(self) -> ops.pebble.LayerDict:
+    @staticmethod
+    def get_pebble_layer() -> CalibreWebLayerDict:
         """Return a dictionary representing a Pebble layer."""
         c = " && ".join([
             "bash /etc/s6-overlay/s6-rc.d/init-calibre-web-config/run",
@@ -69,8 +81,8 @@ class CalibreWebCharm(ops.CharmBase):
         ])
         command = f"bash -c '{c}'"
         return {
-            "summary": "calibre-web layer",
-            "description": "pebble config layer for calibre-web",
+            "summary": f"{SERVICE_NAME} layer",
+            "description": f"pebble config layer for {SERVICE_NAME}",
             "services": {
                 SERVICE_NAME: {
                     "override": "replace",
@@ -82,7 +94,6 @@ class CalibreWebCharm(ops.CharmBase):
                         'PGID': '1000',  # copied from example docker run
                         'TZ': 'Etc/UTC',  # copied from example docker run
                     },
-                    #'restart': 'unless-stopped',
                 }
             },
         }
