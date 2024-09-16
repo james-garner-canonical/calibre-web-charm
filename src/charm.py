@@ -183,15 +183,25 @@ class CalibreWebCharmCharm(ops.CharmBase):
             container.exec(['apt', 'install', 'dtrx', '-y']).wait()
         logger.debug("_push_and_extract_library: copying library")
         container.push('/books/library.zip', library)
-
         logger.debug("_push_and_extract_library: extracting library")
         container.exec(
             ['dtrx', '--noninteractive', '--overwrite', 'library.zip'],
             working_dir='/books',
         ).wait()
-
-        logger.debug("_push_and_extract_library: flattening /books/library/ to /books/")
         # dtrx always extracts into a folder named after the archive
+        logger.debug("_push_and_extract_library: flattening /books/library/ to /books/")
+        self._move_directory_contents_to_parent(container, directory='/books/library')
+        container.remove_path('/books/library.zip')
+        # library.zip may contain the library contents directly, or inside a 'Calibre Library' directory
+        if container.exists('/books/Calibre Library'):
+            logger.debug(
+                "_push_and_extract_library: flattening /books/Calibre Library/ contents to /books"
+            )
+            self._move_directory_contents_to_parent(container, directory='/books/Calibre Library')
+        logger.debug("push_and_extract_library: done")
+
+    def _move_directory_contents_to_parent(self, container: ops.Container, directory: Path | str) -> None:
+        directory = str(directory)
         move_contents_up_one_level = [
             'bash',
             '-c',
@@ -203,20 +213,10 @@ class CalibreWebCharmCharm(ops.CharmBase):
                 # but they shouldn't since we only run this if we first clean /books/
             ),
         ]
-        container.exec(move_contents_up_one_level, working_dir='/books/library').wait()
+        container.exec(move_contents_up_one_level, working_dir=directory).wait()
         #extra exec kwargs when debugging:
         #kwargs = dict(combine_stderr=True, stderr=None, stdout=cast(typing.BinaryIO, (stdout := CaptureStdOut())))
-        container.exec(['rmdir',  '/books/library']).wait()  # error if not empty
-        container.remove_path('/books/library.zip')
-
-        # library.zip may contain the library contents directly, or inside a 'Calibre Library' directory
-        if container.exists('/books/Calibre Library'):
-            logger.debug(
-                "_push_and_extract_library: flattening /books/Calibre Library/ contents to /books"
-            )
-            container.exec(move_contents_up_one_level, working_dir='/books/Calibre Library').wait()
-            container.exec(['rmdir', '/books/Calibre Library']).wait()  # error if not empty
-        logger.debug("push_and_extract_library: done")
+        container.exec(['rmdir',  directory]).wait()  # error if not empty
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent):
         """Handle changed configuration."""
