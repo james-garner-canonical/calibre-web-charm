@@ -1,16 +1,8 @@
 #!/usr/bin/env python3
-# Copyright 2024 tmp
+# Copyright 2024 Canonical
 # See LICENSE file for licensing details.
-#
-# Learn more at: https://juju.is/docs/sdk
 
-"""Charm the service.
-
-Refer to the following tutorial that will help you
-develop a new k8s charm using the Operator Framework:
-
-https://juju.is/docs/sdk/create-a-minimal-kubernetes-charm
-"""
+"""Charm the calibre-web application."""
 
 import logging
 import typing
@@ -19,7 +11,6 @@ from typing import cast
 
 import ops
 
-logger = logging.getLogger(__name__)
 
 CONTAINER_NAME = 'calibre-web'
 SERVICE_NAME = 'calibre-web'
@@ -246,6 +237,9 @@ class CaptureStdOut:
 
     def write(self, stuff: str) -> None:
         self.lines.append(stuff)
+
+
+logger = logging.getLogger(__name__)
 
 
 if __name__ == "__main__":  # pragma: nocover
