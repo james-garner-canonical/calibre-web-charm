@@ -39,7 +39,7 @@ CalibreWebLayerDict = typing.TypedDict(
 
 
 class CalibreWebCharm(ops.CharmBase):
-    """Charm the service."""
+    """Charm the calibre-web application."""
 
     def __init__(self, framework: ops.Framework) -> None:
         super().__init__(framework)
@@ -57,7 +57,7 @@ class CalibreWebCharm(ops.CharmBase):
         event.add_status(status)
 
     def _on_pebble_ready(self, event: ops.PebbleReadyEvent) -> None:
-        """Define and start a workload using the Pebble API."""
+        """Define and start the workload using the Pebble API."""
         container = event.workload
         container.add_layer(SERVICE_NAME, {**self.get_pebble_layer()}, combine=True)
         container.replan()
@@ -114,7 +114,7 @@ class CalibreWebCharm(ops.CharmBase):
 
     @staticmethod
     def get_pebble_layer() -> CalibreWebLayerDict:
-        """Return a dictionary representing a Pebble layer."""
+        """Return a dictionary representing the Pebble layer."""
         c = " && ".join([
             "bash /etc/s6-overlay/s6-rc.d/init-calibre-web-config/run",
             # with bash because the run script shebang depends on s6
@@ -236,6 +236,7 @@ class CaptureStdOut:
         self.lines: list[str] = []
 
     def write(self, stuff: str) -> None:
+        """Append write argument to self.lines."""
         self.lines.append(stuff)
 
 
