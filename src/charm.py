@@ -15,7 +15,7 @@ https://juju.is/docs/sdk/create-a-minimal-kubernetes-charm
 import logging
 import typing
 from pathlib import Path
-from typing import NotRequired, cast
+from typing import cast
 
 import ops
 
@@ -43,9 +43,8 @@ CalibreWebLayerDict = typing.TypedDict(
         'summary': str,
         'description': str,
         'services': dict[str, ops.pebble.ServiceDict],
-        'checks': NotRequired[dict[str, ops.pebble.CheckDict]],
-        'log-targets': NotRequired[dict[str, ops.pebble.LogTargetDict]],
     },
+    total=True,
 )
 
 
