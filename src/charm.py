@@ -79,7 +79,9 @@ class CalibreWebCharm(ops.CharmBase):
     def _on_config_changed(self, event: ops.ConfigChangedEvent):
         """Handle changed configuration."""
         logger.debug("_on_config_changed")
-        self._push_library_to_storage()
+        ## not sure if this should run here?
+        ## leaning towards no, as you can use the library-write action if needed
+        #self._push_library_to_storage()
 
     def _on_library_write(self, event: ops.ActionEvent) -> None:
         self._push_library_to_storage()
