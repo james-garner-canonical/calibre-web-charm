@@ -11,6 +11,8 @@ import pytest
 import yaml
 from pytest_operator.plugin import OpsTest
 
+import charm
+
 if TYPE_CHECKING:
     from juju.model import Model
 
@@ -37,3 +39,28 @@ async def test_build_and_deploy(ops_test: OpsTest):
     }
     await model.deploy(charm, resources=resources, application_name=APP_NAME)
     await model.wait_for_idle(apps=[APP_NAME], status="active", raise_on_blocked=True, timeout=600)
+
+
+async def test_set_config(ops_test: OpsTest):
+    model = cast("Model", ops_test.model)
+    app = model.applications[APP_NAME]
+    assert app is not None
+    for behaviour in charm.LIBRARY_WRITE_BEHAVIOURS:
+        await app.set_config({"library-write": behaviour})
+        await model.wait_for_idle(
+            apps=[APP_NAME],
+            status="active",
+            raise_on_error=True,
+            raise_on_blocked=True,
+            timeout=600,
+        )
+    behaviour = "bad"
+    assert behaviour not in charm.LIBRARY_WRITE_BEHAVIOURS
+    await app.set_config({"library-write": behaviour})
+    await model.wait_for_idle(
+        apps=[APP_NAME],
+        status="blocked",
+        raise_on_error=True,
+        raise_on_blocked=False,
+        timeout=600,
+    )
