@@ -19,7 +19,6 @@ from typing import cast
 
 import ops
 
-# Log messages can be retrieved using juju debug-log
 logger = logging.getLogger(__name__)
 
 CONTAINER_NAME = 'calibre-web'
@@ -30,10 +29,10 @@ LIBRARY_WRITE_CONFIG = 'library-write'
 LIBRARY_INFO_ACTION = 'library-info'
 LIBRARY_INFO_FORMAT = 'format'
 
-GetLibraryFormatParamValue: typing.TypeAlias = typing.Literal['tree', 'ls-1']  # , 'zip']
+GetLibraryFormatParamValue: typing.TypeAlias = typing.Literal['tree', 'ls-1']
 GET_LIBRARY_FORMAT_PARAM_VALUES = typing.get_args(GetLibraryFormatParamValue)
 
-LibraryWriteBehaviour: typing.TypeAlias = typing.Literal['skip', 'clean']  # , 'overwrite']
+LibraryWriteBehaviour: typing.TypeAlias = typing.Literal['skip', 'clean']
 LIBRARY_WRITE_BEHAVIOURS = typing.get_args(LibraryWriteBehaviour)
 
 
