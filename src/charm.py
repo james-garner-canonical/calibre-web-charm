@@ -169,6 +169,8 @@ class CalibreWebCharm(ops.CharmBase):
         logger.debug(f"_push_library_to_storage: {container=}")
         library_path = Path(self.framework.model.resources.fetch('calibre-library'))
         library = library_path.read_bytes()
+        # if the default library 'resource' was the starter library.zip
+        # instead of the empty empty.zip, this logic could be removed
         if len(library):  # user provided library
             logger.debug(f"_push_library_to_storage: {library_path=}")
             self._push_and_extract_library(container, library)
