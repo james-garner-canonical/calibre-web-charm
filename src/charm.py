@@ -27,8 +27,8 @@ SERVICE_NAME = 'calibre-web'
 STORAGE_NAME = 'books'
 LIBRARY_WRITE_ACTION = 'library-write'
 LIBRARY_WRITE_CONFIG = 'library-write'
-GET_LIBRARY_ACTION = 'library-info'
-GET_LIBRARY_FORMAT = 'format'
+LIBRARY_INFO_ACTION = 'library-info'
+LIBRARY_INFO_FORMAT = 'format'
 
 GetLibraryFormatParamValue: typing.TypeAlias = typing.Literal['tree', 'ls-1']  # , 'zip']
 GET_LIBRARY_FORMAT_PARAM_VALUES = typing.get_args(GetLibraryFormatParamValue)
@@ -58,7 +58,7 @@ class CalibreWebCharm(ops.CharmBase):
         framework.observe(self.on[STORAGE_NAME].storage_attached, self._on_storage_attached)
         framework.observe(self.on.config_changed, self._on_config_changed)
         framework.observe(self.on[LIBRARY_WRITE_ACTION].action, self._on_library_write)
-        framework.observe(self.on[GET_LIBRARY_ACTION].action, self._on_library_info)
+        framework.observe(self.on[LIBRARY_INFO_ACTION].action, self._on_library_info)
         self.unit.set_ports(8083)
 
     def _on_collect_status(self, event: ops.CollectStatusEvent) -> None:
@@ -88,7 +88,7 @@ class CalibreWebCharm(ops.CharmBase):
 
     def _on_library_info(self, event: ops.ActionEvent) -> None:
         container = self.framework.model.unit.containers[CONTAINER_NAME]
-        format = cast(str, event.params[GET_LIBRARY_FORMAT])
+        format = cast(str, event.params[LIBRARY_INFO_FORMAT])
         match format:
             case 'tree':
                 try:
@@ -116,8 +116,8 @@ class CalibreWebCharm(ops.CharmBase):
                 event.set_results({'ls-1': '\n'.join(stdout.lines)})
             case _:
                 msg = (
-                    f"Invalid value {format} for {GET_LIBRARY_FORMAT} parameter"
-                    f" of {GET_LIBRARY_ACTION} action."
+                    f"Invalid value {format} for {LIBRARY_INFO_FORMAT} parameter"
+                    f" of {LIBRARY_INFO_ACTION} action."
                 )
                 logger.error(f'_on_library_info: {format}: {msg}')
                 event.fail(msg)
