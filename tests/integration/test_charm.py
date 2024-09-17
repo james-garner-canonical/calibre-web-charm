@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
 APP_NAME = METADATA["name"]
+SENTINEL_PATH = "/books/sentinel"
 
 
 @pytest.mark.skip_if_deployed
@@ -44,7 +45,7 @@ async def test_build_and_deploy(ops_test: OpsTest):
     await model.wait_for_idle(apps=[APP_NAME], status="active", raise_on_blocked=True, timeout=600)
 
 
-async def test_set_config_status(ops_test: OpsTest):
+async def test_status_for_set_config(ops_test: OpsTest):
     model = cast("Model", ops_test.model)
     app = model.applications[APP_NAME]
     assert app is not None
@@ -71,17 +72,17 @@ async def test_library_write_with_skip(ops_test: OpsTest):
     await add_books_sentinel(ops_test)
     await run_library_write_action(ops_test, behaviour="skip")
     # library-write: won't write, sentinel file will still be there
-    await execute_in_container(ops_test, ["test", "-e", "/books/sentinel"])
+    await execute_in_container(ops_test, ["test", "-e", SENTINEL_PATH])
     # cleanup
-    await execute_in_container(ops_test, ["rm", "/books/sentinel"])
-    await execute_in_container(ops_test, ["test", "!", "-e", "/books/sentinel"])
+    await execute_in_container(ops_test, ["rm", SENTINEL_PATH])
+    await execute_in_container(ops_test, ["test", "!", "-e", SENTINEL_PATH])
 
 
 async def test_library_write_with_clean(ops_test: OpsTest):
     await add_books_sentinel(ops_test)
     await run_library_write_action(ops_test, behaviour="clean")
     # library-write: will first clear /books/, sentinel file will be gone
-    await execute_in_container(ops_test, ["test", "!", "-e", "/books/sentinel"])
+    await execute_in_container(ops_test, ["test", "!", "-e", SENTINEL_PATH])
 
 
 ###########
@@ -99,8 +100,8 @@ def get_model_app_unit(ops_test: OpsTest) -> tuple["Model", "Application", "Unit
 
 
 async def add_books_sentinel(ops_test: OpsTest) -> None:
-    await execute_in_container(ops_test, ["touch", "/books/sentinel"])
-    await execute_in_container(ops_test, ["test", "-e", "/books/sentinel"])
+    await execute_in_container(ops_test, ["touch", SENTINEL_PATH])
+    await execute_in_container(ops_test, ["test", "-e", SENTINEL_PATH])
 
 
 async def run_library_write_action(ops_test: OpsTest, behaviour: charm.LibraryWriteBehaviour) -> None:
