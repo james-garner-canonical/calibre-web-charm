@@ -166,8 +166,6 @@ class CalibreWebCharm(ops.CharmBase):
                     logger.debug(msg_prefix + "cleaning ...")
                     for fileinfo in contents:
                         container.remove_path(fileinfo.path, recursive=True)
-                #case "overwrite":
-                #    logger.debug(msg_prefix + "continuing ...")
         logger.debug(f"_push_library_to_storage: {container=}")
         library_path = Path(self.framework.model.resources.fetch('calibre-library'))
         library = library_path.read_bytes()
