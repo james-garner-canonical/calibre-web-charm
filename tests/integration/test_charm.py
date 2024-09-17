@@ -20,6 +20,7 @@ METADATA = yaml.safe_load(Path("./charmcraft.yaml").read_text())
 APP_NAME = METADATA["name"]
 
 
+@pytest.mark.skip_if_deployed
 @pytest.mark.abort_on_fail
 async def test_build_and_deploy(ops_test: OpsTest):
     """Build and deploy calibre-web charm, attaching resources and storage.
@@ -35,4 +36,4 @@ async def test_build_and_deploy(ops_test: OpsTest):
         "calibre-library": "./empty.zip",
     }
     await model.deploy(charm, resources=resources, application_name=APP_NAME)
-    await model.wait_for_idle(apps=[APP_NAME], status="active", raise_on_blocked=True, timeout=1000)
+    await model.wait_for_idle(apps=[APP_NAME], status="active", raise_on_blocked=True, timeout=600)
