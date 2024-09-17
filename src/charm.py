@@ -74,7 +74,12 @@ class CalibreWebCharm(ops.CharmBase):
         #self._push_library_to_storage()
 
     def _on_library_write(self, event: ops.ActionEvent) -> None:
+        library_write_behaviour, status = self._get_library_write_behaviour()
+        if library_write_behaviour is None:
+            event.fail(status.message)
+            return
         self._push_library_to_storage()
+        event.set_results({LIBRARY_WRITE_CONFIG: library_write_behaviour})
 
     def _on_library_info(self, event: ops.ActionEvent) -> None:
         container = self.framework.model.unit.containers[CONTAINER_NAME]
