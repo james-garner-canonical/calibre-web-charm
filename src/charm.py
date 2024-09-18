@@ -67,10 +67,10 @@ class CalibreWebCharm(ops.CharmBase):
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent):
         """Handle changed configuration."""
-        logger.debug("_on_config_changed")
+        logger.debug('_on_config_changed')
         ## not sure if this should run here?
         ## leaning towards no, as you can use the library-write action if needed
-        #self._push_library_to_storage()
+        # self._push_library_to_storage()
 
     def _on_library_write(self, event: ops.ActionEvent) -> None:
         library_write_behaviour, status = self._get_library_write_behaviour()
@@ -110,8 +110,8 @@ class CalibreWebCharm(ops.CharmBase):
                 event.set_results({'ls-1': '\n'.join(stdout.lines)})
             case _:
                 msg = (
-                    f"Invalid value {format} for {LIBRARY_INFO_FORMAT_PARAM} parameter"
-                    f" of {LIBRARY_INFO_ACTION} action."
+                    f'Invalid value {format} for {LIBRARY_INFO_FORMAT_PARAM} parameter'
+                    f' of {LIBRARY_INFO_ACTION} action.'
                 )
                 logger.error(f'_on_library_info: {format}: {msg}')
                 event.fail(msg)
@@ -119,24 +119,26 @@ class CalibreWebCharm(ops.CharmBase):
     @staticmethod
     def get_pebble_layer() -> CalibreWebLayerDict:
         """Return a dictionary representing the Pebble layer."""
-        c = " && ".join([
-            "bash /etc/s6-overlay/s6-rc.d/init-calibre-web-config/run",
-            # with bash because the run script shebang depends on s6
-            "export CALIBRE_DBPATH=/config",
-            "cd /app/calibre-web",
-            "python3 /app/calibre-web/cps.py",
-        ])
+        c = ' && '.join(
+            [
+                'bash /etc/s6-overlay/s6-rc.d/init-calibre-web-config/run',
+                # with bash because the run script shebang depends on s6
+                'export CALIBRE_DBPATH=/config',
+                'cd /app/calibre-web',
+                'python3 /app/calibre-web/cps.py',
+            ]
+        )
         command = f"bash -c '{c}'"
         return {
-            "summary": f"{SERVICE_NAME} layer",
-            "description": f"pebble config layer for {SERVICE_NAME}",
-            "services": {
+            'summary': f'{SERVICE_NAME} layer',
+            'description': f'pebble config layer for {SERVICE_NAME}',
+            'services': {
                 SERVICE_NAME: {
-                    "override": "replace",
-                    "summary": "calibre-web",
-                    "command": command,
-                    "startup": "enabled",
-                    "environment": {
+                    'override': 'replace',
+                    'summary': 'calibre-web',
+                    'command': command,
+                    'startup': 'enabled',
+                    'environment': {
                         'PUID': '1000',  # copied from example docker run
                         'PGID': '1000',  # copied from example docker run
                         'TZ': 'Etc/UTC',  # copied from example docker run
@@ -151,33 +153,35 @@ class CalibreWebCharm(ops.CharmBase):
         if library_write_behaviour is None:
             return
         container = self.framework.model.unit.containers[CONTAINER_NAME]
-        if (contents := container.list_files('/books/')):
-            msg_prefix = f"_push_library_to_storage: {library_write_behaviour=}: "
+        if contents := container.list_files('/books/'):
+            msg_prefix = f'_push_library_to_storage: {library_write_behaviour=}: '
             match library_write_behaviour:
-                case "skip":
-                    logger.debug(msg_prefix + "returning")
+                case 'skip':
+                    logger.debug(msg_prefix + 'returning')
                     return
-                case "clean":
-                    logger.debug(msg_prefix + "cleaning ...")
+                case 'clean':
+                    logger.debug(msg_prefix + 'cleaning ...')
                     for fileinfo in contents:
                         container.remove_path(fileinfo.path, recursive=True)
-        logger.debug(f"_push_library_to_storage: {container=}")
+        logger.debug(f'_push_library_to_storage: {container=}')
         library_path = Path(self.framework.model.resources.fetch('calibre-library'))
         library = library_path.read_bytes()
         # if the default library 'resource' was the starter library.zip
         # instead of the empty empty.zip, this logic could be removed
         if len(library):  # user provided library
-            logger.debug(f"_push_library_to_storage: {library_path=}")
+            logger.debug(f'_push_library_to_storage: {library_path=}')
             self._push_and_extract_library(container, library)
             return
-        #else: use default library
+        # else: use default library
         library_path = Path('.') / 'library.zip'
         library = library_path.read_bytes()
         assert library
-        logger.debug(f"_push_library_to_storage: {library_path=}")
+        logger.debug(f'_push_library_to_storage: {library_path=}')
         self._push_and_extract_library(container, library)
 
-    def _get_library_write_behaviour(self) -> tuple[LibraryWriteBehaviour, ops.ActiveStatus] | tuple[None, ops.BlockedStatus]:
+    def _get_library_write_behaviour(
+        self,
+    ) -> tuple[LibraryWriteBehaviour, ops.ActiveStatus] | tuple[None, ops.BlockedStatus]:
         library_write_behaviour = self.model.config[LIBRARY_WRITE_CONFIG]
         if library_write_behaviour not in LIBRARY_WRITE_BEHAVIOURS:
             msg = f"invalid {LIBRARY_WRITE_CONFIG}: '{library_write_behaviour}'"
@@ -190,29 +194,31 @@ class CalibreWebCharm(ops.CharmBase):
         try:
             container.exec(['which', 'dtrx']).wait()
         except ops.pebble.ExecError:
-            logger.debug("_push_and_extract_library: installing dependencies")
+            logger.debug('_push_and_extract_library: installing dependencies')
             container.exec(['apt', 'update']).wait()
             container.exec(['apt', 'install', 'dtrx', '-y']).wait()
-        logger.debug("_push_and_extract_library: copying library")
+        logger.debug('_push_and_extract_library: copying library')
         container.push('/books/library.zip', library)
-        logger.debug("_push_and_extract_library: extracting library")
+        logger.debug('_push_and_extract_library: extracting library')
         container.exec(
             ['dtrx', '--noninteractive', '--overwrite', 'library.zip'],
             working_dir='/books',
         ).wait()
         # dtrx always extracts into a folder named after the archive
-        logger.debug("_push_and_extract_library: flattening /books/library/ to /books/")
+        logger.debug('_push_and_extract_library: flattening /books/library/ to /books/')
         self._move_directory_contents_to_parent(container, directory='/books/library')
         container.remove_path('/books/library.zip')
         # library.zip may contain the library contents directly, or inside a 'Calibre Library' directory
         if container.exists('/books/Calibre Library'):
             logger.debug(
-                "_push_and_extract_library: flattening /books/Calibre Library/ contents to /books"
+                '_push_and_extract_library: flattening /books/Calibre Library/ contents to /books'
             )
             self._move_directory_contents_to_parent(container, directory='/books/Calibre Library')
-        logger.debug("push_and_extract_library: done")
+        logger.debug('push_and_extract_library: done')
 
-    def _move_directory_contents_to_parent(self, container: ops.Container, directory: Path | str) -> None:
+    def _move_directory_contents_to_parent(
+        self, container: ops.Container, directory: Path | str
+    ) -> None:
         directory = str(directory)
         move_contents_up_one_level = [
             'bash',
@@ -226,7 +232,7 @@ class CalibreWebCharm(ops.CharmBase):
             ),
         ]
         container.exec(move_contents_up_one_level, working_dir=directory).wait()
-        container.exec(['rmdir',  directory]).wait()  # error if not empty
+        container.exec(['rmdir', directory]).wait()  # error if not empty
 
 
 class CaptureStdOut:
@@ -247,5 +253,5 @@ class CaptureStdOut:
 logger = logging.getLogger(__name__)
 
 
-if __name__ == "__main__":  # pragma: nocover
+if __name__ == '__main__':  # pragma: nocover
     ops.main(CalibreWebCharm)  # type: ignore
