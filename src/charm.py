@@ -11,17 +11,16 @@ from typing import cast
 
 import ops
 
-
 CONTAINER_NAME = 'calibre-web'
 SERVICE_NAME = 'calibre-web'
 STORAGE_NAME = 'books'
 LIBRARY_WRITE_ACTION = 'library-write'
 LIBRARY_WRITE_CONFIG = 'library-write'
 LIBRARY_INFO_ACTION = 'library-info'
-LIBRARY_INFO_FORMAT = 'format'
+LIBRARY_INFO_FORMAT_PARAM = 'format'
 
-GetLibraryFormatParamValue: typing.TypeAlias = typing.Literal['tree', 'ls-1']
-GET_LIBRARY_FORMAT_PARAM_VALUES = typing.get_args(GetLibraryFormatParamValue)
+LibraryInfoFormat: typing.TypeAlias = typing.Literal['tree', 'ls-1']
+LIBRARY_INFO_FORMATS = typing.get_args(LibraryInfoFormat)
 
 LibraryWriteBehaviour: typing.TypeAlias = typing.Literal['skip', 'clean']
 LIBRARY_WRITE_BEHAVIOURS = typing.get_args(LibraryWriteBehaviour)
@@ -83,7 +82,7 @@ class CalibreWebCharm(ops.CharmBase):
 
     def _on_library_info(self, event: ops.ActionEvent) -> None:
         container = self.framework.model.unit.containers[CONTAINER_NAME]
-        format = cast(str, event.params[LIBRARY_INFO_FORMAT])
+        format = cast(str, event.params[LIBRARY_INFO_FORMAT_PARAM])
         match format:
             case 'tree':
                 try:
@@ -111,7 +110,7 @@ class CalibreWebCharm(ops.CharmBase):
                 event.set_results({'ls-1': '\n'.join(stdout.lines)})
             case _:
                 msg = (
-                    f"Invalid value {format} for {LIBRARY_INFO_FORMAT} parameter"
+                    f"Invalid value {format} for {LIBRARY_INFO_FORMAT_PARAM} parameter"
                     f" of {LIBRARY_INFO_ACTION} action."
                 )
                 logger.error(f'_on_library_info: {format}: {msg}')
