@@ -31,6 +31,7 @@ def test_pebble_ready(harness: ops.testing.Harness[CalibreWebCharm]):
     service = harness.model.unit.get_container(charm.CONTAINER_NAME).get_service(
         charm.SERVICE_NAME
     )
+    harness.evaluate_status()
     assert service.is_running()
     assert harness.model.unit.status == ops.ActiveStatus()
 
@@ -39,4 +40,8 @@ def test_config_changed(harness: ops.testing.Harness[CalibreWebCharm]):
     harness.set_can_connect(charm.CONTAINER_NAME, True)
     for val in charm.LIBRARY_WRITE_BEHAVIOURS:
         harness.update_config({charm.LIBRARY_WRITE_CONFIG: val})
-        # assert harness.model.unit.status == ops.ActiveStatus()
+        harness.evaluate_status()
+        assert harness.model.unit.status == ops.ActiveStatus()
+    harness.update_config({charm.LIBRARY_WRITE_CONFIG: "bad-value"})
+    harness.evaluate_status()
+    assert isinstance(harness.model.unit.status, ops.BlockedStatus)

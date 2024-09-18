@@ -51,6 +51,7 @@ class CalibreWebCharm(ops.CharmBase):
         self.unit.set_ports(8083)
 
     def _on_collect_status(self, event: ops.CollectStatusEvent) -> None:
+        logger.debug("_on_collect_status")
         event.add_status(ops.ActiveStatus())
         _, status = self._get_library_write_behaviour()
         event.add_status(status)
@@ -60,17 +61,16 @@ class CalibreWebCharm(ops.CharmBase):
         container = event.workload
         container.add_layer(SERVICE_NAME, {**self.get_pebble_layer()}, combine=True)
         container.replan()
-        self.unit.status = ops.ActiveStatus()
 
     def _on_storage_attached(self, event: ops.StorageAttachedEvent) -> None:
         self._push_library_to_storage()
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent):
-        """Handle changed configuration."""
-        logger.debug('_on_config_changed')
-        ## not sure if this should run here?
-        ## leaning towards no, as you can use the library-write action if needed
-        # self._push_library_to_storage()
+        """Don't do anything! User can run library-write action if needed.
+
+        Bad config values are handled in _on_collect_status
+        """
+        pass
 
     def _on_library_write(self, event: ops.ActionEvent) -> None:
         library_write_behaviour, status = self._get_library_write_behaviour()
