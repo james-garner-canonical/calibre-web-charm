@@ -10,6 +10,7 @@ import pytest
 import charm
 from charm import CalibreWebCharm
 
+# let's look at scenario for further unit tests
 
 @pytest.fixture
 def harness():
@@ -31,11 +32,8 @@ def test_pebble_ready(harness: ops.testing.Harness[CalibreWebCharm]):
     assert harness.model.unit.status == ops.ActiveStatus()
 
 
-#def test_config_changed(harness: ops.testing.Harness[CalibreWebCharm]):
-#    harness.set_can_connect(charm.CONTAINER_NAME, True)
-#    for val in charm.LIBRARY_WRITE_BEHAVIOURS:
-#        pass
-#        # harness.update_config({charm.LIBRARY_WRITE_CONFIG: val})
-#        # this triggers _push_library_to_storage
-#        # which writes files into the calibre-web container's attached storage
-#        # how to unit test this?
+def test_config_changed(harness: ops.testing.Harness[CalibreWebCharm]):
+    harness.set_can_connect(charm.CONTAINER_NAME, True)
+    for val in charm.LIBRARY_WRITE_BEHAVIOURS:
+        harness.update_config({charm.LIBRARY_WRITE_CONFIG: val})
+        #assert harness.model.unit.status == ops.ActiveStatus()
