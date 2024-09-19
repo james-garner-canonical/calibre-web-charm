@@ -68,6 +68,8 @@ class CalibreWebCharm(ops.CharmBase):
         container = event.workload
         container.add_layer(SERVICE_NAME, {**self.get_pebble_layer()}, combine=True)
         container.replan()
+        container.exec(['apt', 'update']).wait()
+        container.exec(['apt', 'install', 'dtrx', 'tree', '-y']).wait()
 
     def _on_storage_attached(self, event: ops.StorageAttachedEvent) -> None:
         self._push_library_to_storage()
@@ -95,12 +97,6 @@ class CalibreWebCharm(ops.CharmBase):
         format = cast(str, event.params[LIBRARY_INFO_FORMAT_PARAM])
         match format:
             case 'tree':
-                try:
-                    container.exec(['which', 'tree']).wait()
-                except ops.pebble.ExecError:
-                    logger.debug('_on_library_info: tree: installing dependencies')
-                    container.exec(['apt', 'update']).wait()
-                    container.exec(['apt', 'install', 'tree', '-y']).wait()
                 logger.debug('_on_library_info: tree: executing')
                 process = container.exec(
                     ['tree'],
@@ -205,17 +201,10 @@ class CalibreWebCharm(ops.CharmBase):
         return cast(LibraryWriteBehaviour, library_write_behaviour), ops.ActiveStatus()
 
     def _push_and_extract_library(self, container: ops.Container, library: bytes) -> None:
-        # use dtrx to extract library due to its consistent behaviour over many archive types
-        # could just add dtrx to the docker image? but it's somehow nice to use the off the shelf image
-        try:
-            container.exec(['which', 'dtrx']).wait()
-        except ops.pebble.ExecError:
-            logger.debug('_push_and_extract_library: installing dependencies')
-            container.exec(['apt', 'update']).wait()
-            container.exec(['apt', 'install', 'dtrx', '-y']).wait()
         logger.debug('_push_and_extract_library: copying library')
         container.push('/books/library.zip', library)
         logger.debug('_push_and_extract_library: extracting library')
+        # use dtrx to extract library due to its consistent behaviour over many archive types
         container.exec(
             ['dtrx', '--noninteractive', '--overwrite', 'library.zip'],
             working_dir='/books',
