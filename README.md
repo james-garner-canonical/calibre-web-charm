@@ -1,19 +1,4 @@
-<!--
-Avoid using this README file for information that is maintained or published elsewhere, e.g.:
-
-* metadata.yaml > published on Charmhub
-* documentation > published on (or linked to from) Charmhub
-* detailed contribution guide > documentation or CONTRIBUTING.md
-
-Use links instead.
--->
-
 # calibre-web
-
-<!--
-Charmhub package name: operator-template
-More information: https://charmhub.io/calibre-web-charm
--->
 
 `calibre-web` requires an initial calibre library to work with. This charm attaches some storage and writes a library to it once the storage is attached -- either a library provided at deployment time as a resource, or a starter library if an empty file is passed as the resource.
 
@@ -44,17 +29,3 @@ juju run calibre-web/0 library-info format=tree --wait=1m
 ```
 
 You can connect to the running `calibre-web` at `$APP_IP:8083`. The default credentials are `admin` and `admin123`. The library locations `/books` needs to be entered on the following screen before further options will be available.
-
-<!--
-Describe your charm in one or two sentences.
-
-## Other resources
-
-If your charm is documented somewhere else other than Charmhub, provide a link separately.
-
-- [Read more](https://example.com)
-
-- [Contributing](CONTRIBUTING.md) or link to other contribution documentation
-
-- See the [Juju SDK documentation](https://juju.is/docs/sdk) for more information about developing and improving charms.
--->
