@@ -237,7 +237,7 @@ class CalibreWebCharm(ops.CharmBase):
             ),
         ]
         container.exec(move_contents_up_one_level, working_dir=directory).wait()
-        container.exec(['rmdir', directory]).wait()  # error if not empty
+        container.remove_path(directory, recursive=False)  # error if not empty
 
 
 class CaptureStdOut:
