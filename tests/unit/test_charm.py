@@ -3,6 +3,8 @@
 #
 # Learn more about testing at: https://juju.is/docs/sdk/testing
 
+from typing import Type
+
 import ops
 import ops.testing
 import pytest
@@ -36,12 +38,17 @@ def test_pebble_ready(harness: ops.testing.Harness[CalibreWebCharm]):
     assert harness.model.unit.status == ops.ActiveStatus()
 
 
-def test_config_changed(harness: ops.testing.Harness[CalibreWebCharm]):
+@pytest.mark.parametrize(
+    "val,status_type",
+    [
+        ("bad-value", ops.BlockedStatus),
+        *((val, ops.ActiveStatus) for val in charm.LIBRARY_WRITE_BEHAVIOURS),
+    ]
+)
+def test_config_changed(
+    harness: ops.testing.Harness[CalibreWebCharm], val: str, status_type: Type[ops.StatusBase]
+):
     harness.set_can_connect(charm.CONTAINER_NAME, True)
-    for val in charm.LIBRARY_WRITE_BEHAVIOURS:
-        harness.update_config({charm.LIBRARY_WRITE_CONFIG: val})
-        harness.evaluate_status()
-        assert harness.model.unit.status == ops.ActiveStatus()
-    harness.update_config({charm.LIBRARY_WRITE_CONFIG: "bad-value"})
+    harness.update_config({charm.LIBRARY_WRITE_CONFIG: val})
     harness.evaluate_status()
-    assert isinstance(harness.model.unit.status, ops.BlockedStatus)
+    assert isinstance(harness.model.unit.status, status_type)
