@@ -11,6 +11,8 @@ from typing import cast
 
 import ops
 
+logger = logging.getLogger(__name__)
+
 CONTAINER_NAME = 'calibre-web'
 SERVICE_NAME = 'calibre-web'
 STORAGE_NAME = 'books'
@@ -125,7 +127,7 @@ class CalibreWebCharm(ops.CharmBase):
                     f'Invalid value {format} for {LIBRARY_INFO_FORMAT_PARAM} parameter'
                     f' of {LIBRARY_INFO_ACTION} action.'
                 )
-                logger.error(f'_on_library_info: {format}: {msg}')
+                logger.error('_on_library_info: %s', msg)
                 event.fail(msg)
 
     @staticmethod
@@ -175,20 +177,20 @@ class CalibreWebCharm(ops.CharmBase):
                     logger.debug(msg_prefix + 'cleaning ...')
                     for fileinfo in contents:
                         container.remove_path(fileinfo.path, recursive=True)
-        logger.debug(f'_push_library_to_storage: {container=}')
+        logger.debug('_push_library_to_storage: container=%s', CONTAINER_NAME)
         library_path = Path(self.model.resources.fetch('calibre-library'))
         library = library_path.read_bytes()
         # if the default library 'resource' was the starter library.zip
         # instead of the empty empty.zip, this logic could be removed
         if len(library):  # user provided library
-            logger.debug(f'_push_library_to_storage: {library_path=}')
+            logger.debug('_push_library_to_storage: library_path=%s', library_path)
             self._push_and_extract_library(container, library)
             return
         # else: use default library
         library_path = Path('.') / 'library.zip'
         library = library_path.read_bytes()
         assert library
-        logger.debug(f'_push_library_to_storage: {library_path=}')
+        logger.debug('_push_library_to_storage: library_path=%s', library_path)
         self._push_and_extract_library(container, library)
 
     def _get_library_write_behaviour(
@@ -253,9 +255,6 @@ class CaptureStdOut:
     def write(self, stuff: str) -> None:
         """Append write argument to self.lines."""
         self.lines.append(stuff)
-
-
-logger = logging.getLogger(__name__)
 
 
 if __name__ == '__main__':  # pragma: nocover
