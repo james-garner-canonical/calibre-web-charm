@@ -130,23 +130,24 @@ async def test_library_write_action_with_clean(ops_test: OpsTest):
     await execute_in_container(ops_test, ['test', '!', '-e', SENTINEL_PATH])
 
 
-async def test_library_actions(ops_test: OpsTest):
+@pytest.mark.parametrize( "library_path,output_formats", KNOWN_LIBRARY_INFO_OUTPUT.items())
+async def test_library_actions(
+    ops_test: OpsTest, library_path: Path, output_formats: dict[charm.LibraryInfoFormat, str]
+):
     """Test writing new libraries and getting info about them.
 
     Test the following:
-        - set library-write config to "clean"
         - attach a calibre-library resource
+        - set library-write config to "clean"
         - run the library-write action (removing old library)
         - run the library-info action with the different output formats
     For the libraries in KNOWN_LIBRARY_INFO_OUTPUT.
     """
-    await set_library_write_config(ops_test, behaviour='clean')
-    for library_path, output_formats in KNOWN_LIBRARY_INFO_OUTPUT.items():
-        run_attach_calibre_library_resource(ops_test, path=library_path)
-        await run_library_write_action(ops_test, behaviour='clean')
-        for format, known_output in output_formats.items():
-            result = await run_library_info_action(ops_test, format=format)
-            assert result == known_output
+    run_attach_calibre_library_resource(ops_test, path=library_path)
+    await run_library_write_action(ops_test, behaviour='clean')
+    for format, known_output in output_formats.items():
+        result = await run_library_info_action(ops_test, format=format)
+        assert result == known_output
 
 
 ###########
