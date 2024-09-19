@@ -1,0 +1,86 @@
+name: calibre-web
+
+type: charm
+
+title: calibre-web charm
+
+summary: A practice charm that deploys calibre-web with an example library.
+
+description: |
+  A charm to deploy calibre-web and add your library to storage.
+
+  Replace or query your library via juju actions.
+
+bases:
+  - build-on:
+    - name: ubuntu
+      channel: "22.04"
+    run-on:
+    - name: ubuntu
+      channel: "22.04"
+
+config:
+  options:
+    library-write:
+      default: skip
+      type: string
+      description: |
+        What to do when /books/ contains something already. Options are:
+        skip (do nothing),
+        clean (delete the contents of /books/ and then extract the provided library or the default if none is provided).
+        Changing this value after storage has already been attached will immediately re-run the storage attached event handler,
+        potentially resulting in cleaning the current contents of /books/.
+
+containers:
+  calibre-web:
+    resource: calibre-web-image
+    mounts:
+      - storage: books
+        location: /books
+
+storage:
+  books:
+    type: filesystem
+    description: Storage mount for Calibre Library
+    location: /books
+    minimum-size: 1G
+    properties:
+      - transient
+
+parts:
+  charm:
+    plugin: charm
+    source: .
+  default-calibre-library:
+    plugin: dump
+    source: ./files
+
+resources:
+  calibre-web-image:
+    type: oci-image
+    description: OCI image for calibre-web
+    # The upstream-source field is ignored by Juju. It is included here as a
+    # reference so the integration testing suite knows which image to deploy
+    # during testing. This field is also used by the 'canonical/charming-actions'
+    # Github action for automated releasing.
+    upstream-source: lscr.io/linuxserver/calibre-web@sha256:b9082211440a374e2d30450135c1ce22b2d8239e1c6185443f1bf51b85a2f5c1
+  calibre-library:
+    type: file
+    description: zip file containing metadata.db and (optionally) books in author subdirectories
+    filename: library.zip
+# I got the idea for an empty default resource from here:
+# https://github.com/canonical/openstack-exporter-operator/blob/main/charmcraft.yaml
+
+actions:
+  library-write:
+    description: Write library to disk as if storage had just been attached
+  library-info:
+    description: Output library info
+    params:
+      format:
+        type: string
+        default: tree
+        description: |
+          Format to output. Options are:
+          tree (show library structure as an ascii tree),
+          ls-1 (show top level of library (author folders) as a flat list).
