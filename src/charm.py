@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 CONTAINER_NAME = 'calibre-web'
 SERVICE_NAME = 'calibre-web'
-STORAGE_NAME = 'books'
 LIBRARY_WRITE_ACTION = 'library-write'
 LIBRARY_WRITE_CONFIG = 'library-write'
 LIBRARY_INFO_ACTION = 'library-info'
@@ -46,9 +45,7 @@ class CalibreWebCharm(ops.CharmBase):
         super().__init__(framework)
         framework.observe(self.on.collect_unit_status, self._on_collect_status)
         framework.observe(self.on[CONTAINER_NAME].pebble_ready, self._on_pebble_ready)
-        framework.observe(self.on[STORAGE_NAME].storage_attached, self._on_storage_attached)
         framework.observe(self.on.install, self._on_install)
-        framework.observe(self.on.config_changed, self._on_config_changed)
         framework.observe(self.on[LIBRARY_WRITE_ACTION].action, self._on_library_write)
         framework.observe(self.on[LIBRARY_INFO_ACTION].action, self._on_library_info)
 
@@ -80,20 +77,6 @@ class CalibreWebCharm(ops.CharmBase):
         container.exec(['apt', 'update']).wait()
         container.exec(['apt', 'install', 'dtrx', 'tree', '-y']).wait()
         self._push_library_to_storage()
-
-    def _on_storage_attached(self, event: ops.StorageAttachedEvent) -> None:
-        #self._push_library_to_storage()
-        pass
-
-    def _on_config_changed(self, event: ops.ConfigChangedEvent):
-        """Don't do anything! User can run library-write action if needed.
-
-        Bad config values are handled in _on_collect_status
-
-        _on_collect_status will be called regardless of whether we observe
-        config-changed, but this might change someday ...
-        """
-        pass
 
     def _on_library_write(self, event: ops.ActionEvent) -> None:
         try:
