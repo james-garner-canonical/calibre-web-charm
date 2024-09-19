@@ -129,8 +129,6 @@ class CalibreWebCharm(ops.CharmBase):
             [
                 'bash /etc/s6-overlay/s6-rc.d/init-calibre-web-config/run',
                 # with bash because the run script shebang depends on s6
-                'export CALIBRE_DBPATH=/config',
-                'cd /app/calibre-web',
                 'python3 /app/calibre-web/cps.py',
             ]
         )
@@ -144,10 +142,12 @@ class CalibreWebCharm(ops.CharmBase):
                     'summary': 'calibre-web',
                     'command': command,
                     'startup': 'enabled',
+                    'working-dir': '/app/calibre-web',
                     'environment': {
                         'PUID': '1000',  # copied from example docker run
                         'PGID': '1000',  # copied from example docker run
                         'TZ': 'Etc/UTC',  # copied from example docker run
+                        'CALIBRE_DBPATH': '/config',
                     },
                 }
             },
