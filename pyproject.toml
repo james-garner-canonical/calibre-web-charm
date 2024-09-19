@@ -1,3 +1,7 @@
+[project]
+name = "calibre-web-charm"
+requires_python = ">=3.12"
+
 # Testing tools configuration
 [tool.coverage.run]
 branch = true
