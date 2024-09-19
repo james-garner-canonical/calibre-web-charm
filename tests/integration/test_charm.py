@@ -213,6 +213,5 @@ async def run_library_write_action(
 async def set_library_write_config(ops_test: OpsTest, behaviour: str) -> None:
     logger.debug(f'set_library_write_config(ops_test, {behaviour=})')
     model, app, unit = get_model_app_unit(ops_test)
-    model, app, unit = get_model_app_unit(ops_test)
     await app.set_config({'library-write': behaviour})
     await model.wait_for_idle(apps=[APP_NAME], status='active', raise_on_error=True, timeout=600)
