@@ -62,8 +62,10 @@ class CalibreWebCharm(ops.CharmBase):
     def _on_collect_status(self, event: ops.CollectStatusEvent) -> None:
         logger.debug("_on_collect_status")
         event.add_status(ops.ActiveStatus())
-        _, status = self._get_library_write_behaviour()
-        event.add_status(status)
+        try:
+            self._get_library_write_behaviour()
+        except ValueError as e:
+            event.add_status(ops.BlockedStatus(str(e)))
 
     def _on_pebble_ready(self, event: ops.PebbleReadyEvent) -> None:
         """Define and start the workload using the Pebble API.
@@ -94,9 +96,10 @@ class CalibreWebCharm(ops.CharmBase):
         pass
 
     def _on_library_write(self, event: ops.ActionEvent) -> None:
-        library_write_behaviour, status = self._get_library_write_behaviour()
-        if library_write_behaviour is None:
-            event.fail(status.message)
+        try:
+            library_write_behaviour = self._get_library_write_behaviour()
+        except ValueError as e:
+            event.fail(str(e))
             return
         self._push_library_to_storage()
         event.set_results({LIBRARY_WRITE_CONFIG: library_write_behaviour})
@@ -171,8 +174,9 @@ class CalibreWebCharm(ops.CharmBase):
     def _push_library_to_storage(self) -> None:
         """Push user provided or default calibre-library resource to storage."""
         logger.debug("_push_library_to_storage")
-        library_write_behaviour, _ = self._get_library_write_behaviour()
-        if library_write_behaviour is None:
+        try:
+            library_write_behaviour = self._get_library_write_behaviour()
+        except ValueError:
             return
         container = self.framework.model.unit.containers[CONTAINER_NAME]
         if contents := container.list_files('/books/'):
@@ -201,14 +205,12 @@ class CalibreWebCharm(ops.CharmBase):
         logger.debug('_push_library_to_storage: library_path=%s', library_path)
         self._push_and_extract_library(container, library)
 
-    def _get_library_write_behaviour(
-        self,
-    ) -> tuple[LibraryWriteBehaviour, ops.ActiveStatus] | tuple[None, ops.BlockedStatus]:
+    def _get_library_write_behaviour(self) -> LibraryWriteBehaviour:
         library_write_behaviour = self.config[LIBRARY_WRITE_CONFIG]
         if library_write_behaviour not in LIBRARY_WRITE_BEHAVIOURS:
             msg = f"invalid {LIBRARY_WRITE_CONFIG}: '{library_write_behaviour}'"
-            return None, ops.BlockedStatus(msg)
-        return cast(LibraryWriteBehaviour, library_write_behaviour), ops.ActiveStatus()
+            raise ValueError(msg)
+        return cast(LibraryWriteBehaviour, library_write_behaviour)
 
     def _push_and_extract_library(self, container: ops.Container, library: bytes) -> None:
         logger.debug('_push_and_extract_library: copying library')
