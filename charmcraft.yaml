@@ -1,35 +1,16 @@
-# This file configures Charmcraft.
-# See https://juju.is/docs/sdk/charmcraft-config for guidance.
-
-# (Required)
-# The charm package name, no spaces
-# See https://juju.is/docs/sdk/naming#heading--naming-charms for guidance.
 name: calibre-web
 
-
-# (Required)
-# The charm type, either 'charm' or 'bundle'.
 type: charm
 
-
-# (Recommended)
 title: calibre-web charm
 
-
-# (Required)
 summary: A practice charm that deploys calibre-web with an example library.
 
-
-# (Required)
 description: |
   A charm to deploy calibre-web and add your library to storage.
 
   Replace or query your library via juju actions.
 
-
-# (Required for 'charm' type)
-# A list of environments (OS version and architecture) where charms must be
-# built on and run on.
 bases:
   - build-on:
     - name: ubuntu
@@ -38,12 +19,6 @@ bases:
     - name: ubuntu
       channel: "22.04"
 
-
-# (Optional) Configuration options for the charm
-# This config section defines charm config options, and populates the Configure
-# tab on Charmhub.
-# More information on this section at https://juju.is/docs/sdk/charmcraft-yaml#heading--config
-# General configuration documentation: https://juju.is/docs/sdk/config
 config:
   options:
     library-write:
@@ -56,15 +31,6 @@ config:
         Changing this value after storage has already been attached will immediately re-run the storage attached event handler,
         potentially resulting in cleaning the current contents of /books/.
 
-# removed library-write option:
-        #overwrite (extract the provided library on top of the existing one if one is provided),
-
-# The containers and resources metadata apply to Kubernetes charms only.
-# See https://juju.is/docs/sdk/metadata-reference for a checklist and guidance.
-# Remove them if not required.
-
-
-# Your workload’s containers.
 containers:
   calibre-web:
     resource: calibre-web-image
@@ -88,15 +54,8 @@ parts:
   default-calibre-library:
     plugin: dump
     source: ./files
-#    organize:
-#      "libxxx.so*": lib/
-#    prime:
-#      - lib/
 
-# This field populates the Resources tab on Charmhub.
 resources:
-  # An OCI image resource for each container listed above.
-  # You may remove this if your charm will run without a workload sidecar container.
   calibre-web-image:
     type: oci-image
     description: OCI image for calibre-web
@@ -125,4 +84,3 @@ actions:
           Format to output. Options are:
           tree (show library structure as an ascii tree),
           ls-1 (show top level of library (author folders) as a flat list).
-        #zip (zipped library, suitable for use as a calibre-library resource).
