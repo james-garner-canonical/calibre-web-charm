@@ -69,6 +69,9 @@ class CalibreWebCharm(ops.CharmBase):
         """Don't do anything! User can run library-write action if needed.
 
         Bad config values are handled in _on_collect_status
+
+        _on_collect_status will be called regardless of whether we observe
+        config-changed, but this might change someday ...
         """
         pass
 
