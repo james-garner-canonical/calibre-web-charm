@@ -91,7 +91,7 @@ class CalibreWebCharm(ops.CharmBase):
         event.set_results({LIBRARY_WRITE_CONFIG: library_write_behaviour})
 
     def _on_library_info(self, event: ops.ActionEvent) -> None:
-        container = self.framework.model.unit.containers[CONTAINER_NAME]
+        container = self.unit.get_container(CONTAINER_NAME)
         format = cast(str, event.params[LIBRARY_INFO_FORMAT_PARAM])
         match format:
             case 'tree':
@@ -180,7 +180,7 @@ class CalibreWebCharm(ops.CharmBase):
                     for fileinfo in contents:
                         container.remove_path(fileinfo.path, recursive=True)
         logger.debug(f'_push_library_to_storage: {container=}')
-        library_path = Path(self.framework.model.resources.fetch('calibre-library'))
+        library_path = Path(self.model.resources.fetch('calibre-library'))
         library = library_path.read_bytes()
         # if the default library 'resource' was the starter library.zip
         # instead of the empty empty.zip, this logic could be removed
@@ -198,7 +198,7 @@ class CalibreWebCharm(ops.CharmBase):
     def _get_library_write_behaviour(
         self,
     ) -> tuple[LibraryWriteBehaviour, ops.ActiveStatus] | tuple[None, ops.BlockedStatus]:
-        library_write_behaviour = self.model.config[LIBRARY_WRITE_CONFIG]
+        library_write_behaviour = self.config[LIBRARY_WRITE_CONFIG]
         if library_write_behaviour not in LIBRARY_WRITE_BEHAVIOURS:
             msg = f"invalid {LIBRARY_WRITE_CONFIG}: '{library_write_behaviour}'"
             return None, ops.BlockedStatus(msg)
