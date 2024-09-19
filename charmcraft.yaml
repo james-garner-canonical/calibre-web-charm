@@ -108,7 +108,7 @@ resources:
     # reference so the integration testing suite knows which image to deploy
     # during testing. This field is also used by the 'canonical/charming-actions'
     # Github action for automated releasing.
-    upstream-source: linuxserver/calibre-web
+    upstream-source: lscr.io/linuxserver/calibre-web@sha256:b9082211440a374e2d30450135c1ce22b2d8239e1c6185443f1bf51b85a2f5c1
   calibre-library:
     type: file
     description: zip file containing metadata.db and (optionally) books in author subdirectories

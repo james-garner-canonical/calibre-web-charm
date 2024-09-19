@@ -5,7 +5,7 @@
 To run the local charm:
 ```bash
 juju deploy ./calibre-web_ubuntu-22.04-amd64.charm \
-    --resource calibre-web-image=lscr.io/linuxserver/calibre-web:latest \
+    --resource calibre-web-image=lscr.io/linuxserver/calibre-web@sha256:b9082211440a374e2d30450135c1ce22b2d8239e1c6185443f1bf51b85a2f5c1 \
     --resource calibre-library=./empty.zip  # an empty file
 ```
 
