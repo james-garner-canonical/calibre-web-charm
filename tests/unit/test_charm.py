@@ -1,4 +1,4 @@
-# Copyright 2024 tmp
+# Copyright 2024 Canonical
 # See LICENSE file for licensing details.
 #
 # Learn more about testing at: https://juju.is/docs/sdk/testing
