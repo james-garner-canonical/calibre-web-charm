@@ -185,8 +185,7 @@ class CalibreWebCharm(ops.CharmBase):
                     return
                 case 'clean':
                     logger.debug(msg_prefix + 'cleaning ...')
-                    for fileinfo in contents:
-                        container.remove_path(fileinfo.path, recursive=True)
+                    container.exec(['find', '/books/', '-mindepth', '1', '-delete']).wait()
         logger.debug('_push_library_to_storage: container=%s', CONTAINER_NAME)
         library_path = Path(self.model.resources.fetch('calibre-library'))
         library = library_path.read_bytes()
