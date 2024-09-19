@@ -113,11 +113,10 @@ class CalibreWebCharm(ops.CharmBase):
                 process = container.exec(
                     ['tree'],
                     working_dir='/books/',
-                    stdout=cast(typing.BinaryIO, (stdout := CaptureStdOut())),
                 )
-                process.wait()
+                stdout, stderr = process.wait_output()
                 try:
-                    event.set_results({'tree': '\n'.join(stdout.lines)})
+                    event.set_results({'tree': stdout})
                 except OSError:
                     event.set_results({'tree': 'library size too large, try ls-1'})
             case 'ls-1':
@@ -125,11 +124,10 @@ class CalibreWebCharm(ops.CharmBase):
                 process = container.exec(
                     ['ls', '-1'],
                     working_dir='/books/',
-                    stdout=cast(typing.BinaryIO, (stdout := CaptureStdOut())),
                 )
-                process.wait()
+                stdout, stderr = process.wait_output()
                 try:
-                    event.set_results({'ls-1': '\n'.join(stdout.lines)})
+                    event.set_results({'ls-1': stdout})
                 except OSError:
                     event.set_results({'ls-1': 'library size too large, sorry!'})
             case _:
@@ -250,21 +248,6 @@ class CalibreWebCharm(ops.CharmBase):
         ]
         container.exec(move_contents_up_one_level, working_dir=directory).wait()
         container.remove_path(directory, recursive=False)  # error if not empty
-
-
-class CaptureStdOut:
-    """Capture stdout when executing processes.
-
-    The default stdout stream is often closed when we try to read it after a process completes.
-    This captures stdout in a simple list for later reading.
-    """
-
-    def __init__(self):
-        self.lines: list[str] = []
-
-    def write(self, stuff: str) -> None:
-        """Append write argument to self.lines."""
-        self.lines.append(stuff)
 
 
 if __name__ == '__main__':  # pragma: nocover
