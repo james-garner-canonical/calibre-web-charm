@@ -102,19 +102,15 @@ async def test_build_and_deploy(ops_test: OpsTest):
     await model.wait_for_idle(apps=[APP_NAME], status='active', raise_on_blocked=True, timeout=600)
 
 
-async def test_status_for_set_config(ops_test: OpsTest):
-    model, app, unit = get_model_app_unit(ops_test)
-    bad_behaviour = 'bad'
-    assert bad_behaviour not in charm.LIBRARY_WRITE_BEHAVIOURS
-    await app.set_config({'library-write': bad_behaviour})
-    await model.wait_for_idle(
-        apps=[APP_NAME],
-        status='blocked',
-        raise_on_error=True,
-        timeout=600,
-    )
-    for good_behaviour in charm.LIBRARY_WRITE_BEHAVIOURS:
-        await set_library_write_config(ops_test, behaviour=good_behaviour)
+@pytest.mark.parametrize(
+    "behaviour,status",
+    [
+        ("bad", "blocked"),
+        *((behaviour, "active") for behaviour in charm.LIBRARY_WRITE_BEHAVIOURS),
+    ],
+)
+async def test_status_for_set_config(ops_test: OpsTest, behaviour: str, status: str):
+    await set_library_write_config(ops_test, behaviour=behaviour, wait_for_status=status)
 
 
 async def test_library_write_action_with_skip(ops_test: OpsTest):
@@ -210,8 +206,13 @@ async def run_library_write_action(
     assert action.results[charm.LIBRARY_WRITE_ACTION] == behaviour
 
 
-async def set_library_write_config(ops_test: OpsTest, behaviour: str) -> None:
+async def set_library_write_config(
+    ops_test: OpsTest, behaviour: str, wait_for_status: str | None = 'active'
+) -> None:
     logger.debug(f'set_library_write_config(ops_test, {behaviour=})')
     model, app, unit = get_model_app_unit(ops_test)
     await app.set_config({'library-write': behaviour})
-    await model.wait_for_idle(apps=[APP_NAME], status='active', raise_on_error=True, timeout=600)
+    if wait_for_status is not None:
+        await model.wait_for_idle(
+            apps=[APP_NAME], status=wait_for_status, raise_on_error=True, timeout=600
+        )
