@@ -55,7 +55,7 @@ class CalibreWebCharm(ops.CharmBase):
     def _on_install(self, event: ops.InstallEvent) -> None:
         """Perform one time setup.
 
-        Install happens after storage attached.
+        install happens after storage-attached
         """
         self.unit.set_ports(8083)
 
@@ -66,15 +66,22 @@ class CalibreWebCharm(ops.CharmBase):
         event.add_status(status)
 
     def _on_pebble_ready(self, event: ops.PebbleReadyEvent) -> None:
-        """Define and start the workload using the Pebble API."""
+        """Define and start the workload using the Pebble API.
+
+        pebble-ready happens after install
+        """
+        logger.debug("_on_pebble_ready")
         container = event.workload
         container.add_layer(SERVICE_NAME, {**self.get_pebble_layer()}, combine=True)
         container.replan()
+        logger.debug("_on_pebble_ready: installing dependencies")
         container.exec(['apt', 'update']).wait()
         container.exec(['apt', 'install', 'dtrx', 'tree', '-y']).wait()
+        self._push_library_to_storage()
 
     def _on_storage_attached(self, event: ops.StorageAttachedEvent) -> None:
-        self._push_library_to_storage()
+        #self._push_library_to_storage()
+        pass
 
     def _on_config_changed(self, event: ops.ConfigChangedEvent):
         """Don't do anything! User can run library-write action if needed.
@@ -163,6 +170,7 @@ class CalibreWebCharm(ops.CharmBase):
 
     def _push_library_to_storage(self) -> None:
         """Push user provided or default calibre-library resource to storage."""
+        logger.debug("_push_library_to_storage")
         library_write_behaviour, _ = self._get_library_write_behaviour()
         if library_write_behaviour is None:
             return
@@ -221,7 +229,7 @@ class CalibreWebCharm(ops.CharmBase):
                 '_push_and_extract_library: flattening /books/Calibre Library/ contents to /books'
             )
             self._move_directory_contents_to_parent(container, directory='/books/Calibre Library')
-        logger.debug('push_and_extract_library: done')
+        logger.debug('_push_and_extract_library: done')
 
     def _move_directory_contents_to_parent(
         self, container: ops.Container, directory: Path | str
