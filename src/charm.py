@@ -98,7 +98,10 @@ class CalibreWebCharm(ops.CharmBase):
                     stdout=cast(typing.BinaryIO, (stdout := CaptureStdOut())),
                 )
                 process.wait()
-                event.set_results({'tree': '\n'.join(stdout.lines)})
+                try:
+                    event.set_results({'tree': '\n'.join(stdout.lines)})
+                except OSError:
+                    event.set_results({'tree': 'library size too large, try ls-1'})
             case 'ls-1':
                 logger.debug('_on_library_info: tree: executing')
                 process = container.exec(
@@ -107,7 +110,10 @@ class CalibreWebCharm(ops.CharmBase):
                     stdout=cast(typing.BinaryIO, (stdout := CaptureStdOut())),
                 )
                 process.wait()
-                event.set_results({'ls-1': '\n'.join(stdout.lines)})
+                try:
+                    event.set_results({'ls-1': '\n'.join(stdout.lines)})
+                except OSError:
+                    event.set_results({'ls-1': 'library size too large, sorry!'})
             case _:
                 msg = (
                     f'Invalid value {format} for {LIBRARY_INFO_FORMAT_PARAM} parameter'
