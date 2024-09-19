@@ -45,9 +45,16 @@ class CalibreWebCharm(ops.CharmBase):
         framework.observe(self.on.collect_unit_status, self._on_collect_status)
         framework.observe(self.on[CONTAINER_NAME].pebble_ready, self._on_pebble_ready)
         framework.observe(self.on[STORAGE_NAME].storage_attached, self._on_storage_attached)
+        framework.observe(self.on.install, self._on_install)
         framework.observe(self.on.config_changed, self._on_config_changed)
         framework.observe(self.on[LIBRARY_WRITE_ACTION].action, self._on_library_write)
         framework.observe(self.on[LIBRARY_INFO_ACTION].action, self._on_library_info)
+
+    def _on_install(self, event: ops.InstallEvent) -> None:
+        """Perform one time setup.
+
+        Install happens after storage attached.
+        """
         self.unit.set_ports(8083)
 
     def _on_collect_status(self, event: ops.CollectStatusEvent) -> None:
